@@ -121,7 +121,7 @@ namespace storm {
              */
             void repeatedMultiplyAndReduce(Environment const& env, OptimizationDirection const& dir, std::vector<ValueType>& x, std::vector<ValueType> const* b, uint64_t n, storm::storage::BitVector const* dirOverride = nullptr) const;
 
-            void repeatedMultiplyAndReduceWithChoices(const Environment &env, const OptimizationDirection &dir, std::vector<ValueType> &x, const std::vector<ValueType> *b, uint64_t n, const storage::BitVector *dirOverride, std::vector<ValueType> &choiceValues, std::vector<unsigned long> rowGroupIndices) const;
+            void repeatedMultiplyAndReduceWithChoices(const Environment &env, const OptimizationDirection &dir, std::vector<ValueType> &x, const std::vector<ValueType> *b, uint64_t n, const storage::BitVector *dirOverride, std::vector<ValueType> &choiceValues, std::vector<uint64_t> rowGroupIndices) const;
 
             /*!
              * Multiplies the row with the given index with x and adds the result to the provided value
