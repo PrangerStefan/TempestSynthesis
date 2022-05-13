@@ -18,7 +18,7 @@ namespace storm {
                 MDPSparseModelCheckingHelperReturnType(MDPSparseModelCheckingHelperReturnType const&) = delete;
                 MDPSparseModelCheckingHelperReturnType(MDPSparseModelCheckingHelperReturnType&&) = default;
 
-                MDPSparseModelCheckingHelperReturnType(std::vector<ValueType>&& values, storm::storage::BitVector&& maybeStates = nullptr, std::unique_ptr<storm::storage::Scheduler<ValueType>>&& scheduler = nullptr, std::vector<ValueType>&& choiceValues = nullptr) : values(std::move(values)), maybeStates(maybeStates), scheduler(std::move(scheduler)), choiceValues(std::move(choiceValues)) {
+                MDPSparseModelCheckingHelperReturnType(std::vector<ValueType>&& values, storm::storage::BitVector&& maybeStates, std::unique_ptr<storm::storage::Scheduler<ValueType>>&& scheduler, std::vector<ValueType>&& choiceValues) : values(std::move(values)), maybeStates(maybeStates), scheduler(std::move(scheduler)), choiceValues(std::move(choiceValues)) {
                     // Intentionally left empty.
                 }
 
