@@ -34,10 +34,20 @@ namespace tempest {
             return std::string(boost::core::demangled_name(BOOST_CORE_TYPEID(*this)));
         }
 
+        template<typename ValueType, typename IndexType>
+        std::string AbstractShield<ValueType, IndexType>::getShieldFileName() const {
+            return shieldingExpression->getFilename() + ".shield";
+        }
+
+        template<typename ValueType, typename IndexType>
+        void AbstractShield<ValueType, IndexType>::printToStream(std::ostream& out, std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model) const {
+          //  construct().printToStream(out, shieldingExpression, model)
+        }
         // Explicitly instantiate appropriate
         template class AbstractShield<double, typename storm::storage::SparseMatrix<double>::index_type>;
 #ifdef STORM_HAVE_CARL
         template class AbstractShield<storm::RationalNumber, typename storm::storage::SparseMatrix<storm::RationalNumber>::index_type>;
+        template class AbstractShield<storm::RationalFunction, typename storm::storage::SparseMatrix<storm::RationalFunction>::index_type>;
 #endif
     }
 }

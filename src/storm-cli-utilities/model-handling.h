@@ -1043,6 +1043,15 @@ namespace storm {
                                                     STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Scheduler export not supported for this property.");
                                                 }
                                             }
+                                            if (result->isExplicitQuantitativeCheckResult()) {
+                                                if (result-> template asExplicitQuantitativeCheckResult<ValueType>().hasShield()) {
+                                                    auto shield = result->template asExplicitQuantitativeCheckResult<ValueType>().getShield();
+                                                    STORM_PRINT_AND_LOG("Exporting shield ...");
+                                                    
+                                                    storm::api::exportShield(sparseModel, shield);
+                                                }
+                                            }
+
                                             if (ioSettings.isExportCheckResultSet()) {
                                                 STORM_LOG_WARN_COND(sparseModel->hasStateValuations(), "No information of state valuations available. The result output will use internal state ids. You might be interested in building the model with state valuations using --buildstateval.");
                                                 STORM_LOG_WARN_COND(exportCount == 0, "Prepending " << exportCount << " to file name for this property because there are multiple properties.");

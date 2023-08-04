@@ -204,6 +204,11 @@ namespace storm {
         bool ExplicitQuantitativeCheckResult<ValueType>::hasScheduler() const {
             return static_cast<bool>(scheduler);
         }
+
+        template<typename ValueType>
+        bool ExplicitQuantitativeCheckResult<ValueType>::hasShield() const {
+            return static_cast<bool>(shield);
+        }
         
         template<typename ValueType>
         void ExplicitQuantitativeCheckResult<ValueType>::setScheduler(std::unique_ptr<storm::storage::Scheduler<ValueType>>&& scheduler) {
@@ -220,6 +225,17 @@ namespace storm {
         storm::storage::Scheduler<ValueType>& ExplicitQuantitativeCheckResult<ValueType>::getScheduler() {
             STORM_LOG_THROW(this->hasScheduler(), storm::exceptions::InvalidOperationException, "Unable to retrieve non-existing scheduler.");
             return *scheduler.get();
+        }
+
+        template<typename ValueType>
+        void ExplicitQuantitativeCheckResult<ValueType>::setShield(std::unique_ptr<tempest::shields::AbstractShield<ValueType, IndexType>> shield) {
+            this->shield = std::move(shield);
+        }
+
+        template<typename ValueType>
+        std::shared_ptr<tempest::shields::AbstractShield<ValueType,typename ExplicitQuantitativeCheckResult<ValueType>::IndexType>> const& ExplicitQuantitativeCheckResult<ValueType>::getShield() const {
+            STORM_LOG_THROW(this->hasScheduler(), storm::exceptions::InvalidOperationException, "Unable to retrieve non-existing scheduler.");
+            return shield.get();
         }
 
         template<typename ValueType>

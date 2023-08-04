@@ -49,6 +49,9 @@ namespace tempest {
             storm::OptimizationDirection getOptimizationDirection();
 
             std::string getClassName() const;
+            std::string getShieldFileName() const;
+
+            void printToStream(std::ostream& out, std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model) const;
 
         protected:
             AbstractShield(std::vector<IndexType> const& rowGroupIndices, std::shared_ptr<storm::logic::ShieldExpression const> const& shieldingExpression, storm::OptimizationDirection optimizationDirection, storm::storage::BitVector relevantStates, boost::optional<storm::storage::BitVector> coalitionStates);

@@ -166,6 +166,10 @@ namespace storm {
         bool CheckResult::hasScheduler() const {
             return false;
         }
+
+        bool CheckResult::hasShield() const {
+            return false;
+        }
         
         // Explicitly instantiate the template functions.
         template QuantitativeCheckResult<double>& CheckResult::asQuantitativeCheckResult();

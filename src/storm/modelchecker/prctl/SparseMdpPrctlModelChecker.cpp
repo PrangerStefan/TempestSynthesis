@@ -135,6 +135,8 @@ namespace storm {
             std::unique_ptr<CheckResult> result(new ExplicitQuantitativeCheckResult<ValueType>(std::move(ret.values)));
             if(checkTask.isShieldingTask()) {
                 tempest::shields::createShield<ValueType>(std::make_shared<storm::models::sparse::Mdp<ValueType>>(this->getModel()), std::move(ret.choiceValues), checkTask.getShieldingExpression(), checkTask.getOptimizationDirection(), std::move(ret.maybeStates), storm::storage::BitVector(ret.maybeStates.size(), true));
+                 auto shield = tempest::shields::createShieldTest<ValueType>(std::make_shared<storm::models::sparse::Mdp<ValueType>>(this->getModel()), std::move(ret.choiceValues), checkTask.getShieldingExpression(), checkTask.getOptimizationDirection(), std::move(ret.maybeStates), storm::storage::BitVector(ret.maybeStates.size(), true));
+                result->asExplicitQuantitativeCheckResult<ValueType>().setShield(std::move(shield));                    
             } else if (checkTask.isProduceSchedulersSet() && ret.scheduler) {
                 result->asExplicitQuantitativeCheckResult<ValueType>().setScheduler(std::move(ret.scheduler));
             }

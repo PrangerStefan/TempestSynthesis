@@ -4,7 +4,7 @@
 #include "storm/modelchecker/propositional/SparsePropositionalModelChecker.h"
 #include "storm/models/sparse/Mdp.h"
 #include "storm/solver/MinMaxLinearEquationSolver.h"
-
+#include "storm/shields/AbstractShield.h"
 
 namespace storm {
     

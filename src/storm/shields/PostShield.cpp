@@ -71,6 +71,7 @@ namespace tempest {
         template class PostShield<double, typename storm::storage::SparseMatrix<double>::index_type>;
 #ifdef STORM_HAVE_CARL
         template class PostShield<storm::RationalNumber, typename storm::storage::SparseMatrix<storm::RationalNumber>::index_type>;
+    
 #endif
     }
 }

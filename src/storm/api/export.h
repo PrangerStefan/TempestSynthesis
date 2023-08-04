@@ -11,6 +11,7 @@
 #include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
 #include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
 #include "storm/exceptions/NotSupportedException.h"
+#include "storm/shields/AbstractShield.h"
 
 namespace storm {
     
@@ -60,6 +61,14 @@ namespace storm {
             } else {
                 scheduler.printToStream(stream, model, false, true);
             }
+            storm::utility::closeFile(stream);
+        }
+
+        template <typename ValueType, typename IndexType>
+        void exportShield(std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, std::shared_ptr<tempest::shields::AbstractShield<ValueType, IndexType>> const& shield) {
+            std::ofstream stream;
+            storm::utility::openFile(shield->getShieldFileName(), stream);
+            shield->printToStream(stream, model);
             storm::utility::closeFile(stream);
         }
         
