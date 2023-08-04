@@ -64,11 +64,17 @@ namespace tempest {
             return shield;
         }
 
+        template<typename ValueType, typename IndexType>
+        void OptimalShield<ValueType, IndexType>::printToStream(std::ostream& out, std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model) {
+           this->construct().printToStream(out, this->shieldingExpression, model);
+        }
+
         // Explicitly instantiate appropriate classes
         template class OptimalShield<double, typename storm::storage::SparseMatrix<double>::index_type>;
 #ifdef STORM_HAVE_CARL
         template class OptimalShield<storm::RationalNumber, typename storm::storage::SparseMatrix<storm::RationalNumber>::index_type>;
-        
+       // template class OptimalShield<storm::RationalFunction, typename storm::storage::SparseMatrix<storm::RationalFunction>::index_type>;
+
 #endif
     }
 }

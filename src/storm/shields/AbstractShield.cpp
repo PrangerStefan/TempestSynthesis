@@ -39,10 +39,7 @@ namespace tempest {
             return shieldingExpression->getFilename() + ".shield";
         }
 
-        template<typename ValueType, typename IndexType>
-        void AbstractShield<ValueType, IndexType>::printToStream(std::ostream& out, std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model) const {
-          //  construct().printToStream(out, shieldingExpression, model)
-        }
+        
         // Explicitly instantiate appropriate
         template class AbstractShield<double, typename storm::storage::SparseMatrix<double>::index_type>;
 #ifdef STORM_HAVE_CARL
