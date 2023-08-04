@@ -31,5 +31,9 @@ namespace tempest {
 
         template<typename ValueType, typename IndexType = storm::storage::sparse::state_type>
         void createQuantitativeShield(std::shared_ptr<storm::models::sparse::Model<ValueType>> model, std::vector<ValueType> const& choiceValues, std::shared_ptr<storm::logic::ShieldExpression const> const& shieldingExpression, storm::OptimizationDirection optimizationDirection, storm::storage::BitVector relevantStates, boost::optional<storm::storage::BitVector> coalitionStates);
+
+        template<typename ValueType, typename IndexType = storm::storage::sparse::state_type>
+        std::unique_ptr<tempest::shields::AbstractShield<ValueType, IndexType>> createQuantitativeShieldTest(std::shared_ptr<storm::models::sparse::Model<ValueType>> model, std::vector<ValueType> const& choiceValues, std::shared_ptr<storm::logic::ShieldExpression const> const& shieldingExpression, storm::OptimizationDirection optimizationDirection, storm::storage::BitVector relevantStates, boost::optional<storm::storage::BitVector> coalitionStates);
+
     }
 }
