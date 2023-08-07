@@ -38,6 +38,15 @@ namespace storm {
             void setChoice(PostSchedulerChoice<ValueType> const& newChoice, uint_fast64_t modelState, uint_fast64_t memoryState = 0);
 
             /*!
+             * Gets the choice defined by the scheduler for the given model and memory state.
+             *
+             * @param state The state for which to get the choice.
+             * @param memoryState the memory state which we consider.
+             */
+            PostSchedulerChoice<ValueType> const& getChoice(uint_fast64_t modelState, uint_fast64_t memoryState = 0) const;
+
+
+            /*!
              * Is the scheduler defined on the states indicated by the selected-states bitvector?
              */
             bool isChoiceSelected(BitVector const& selectedStates, uint64_t memoryState = 0) const;
@@ -97,3 +106,4 @@ namespace storm {
         };
     }
 }
+    

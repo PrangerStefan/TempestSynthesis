@@ -41,6 +41,12 @@ namespace storm {
         }
 
         template <typename ValueType>
+        PostSchedulerChoice<ValueType> const& PostScheduler<ValueType>::getChoice(uint_fast64_t modelState, uint_fast64_t memoryState) const {
+            STORM_LOG_ASSERT(modelState < schedulerChoiceMapping[memoryState].size(), "Illegal model state index");
+            return schedulerChoiceMapping[memoryState][modelState];
+        }
+
+        template <typename ValueType>
         bool PostScheduler<ValueType>::isDeterministicScheduler() const {
             return true;
         }

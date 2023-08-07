@@ -41,6 +41,14 @@ namespace storm {
         }
 
         template <typename ValueType>
+        PreSchedulerChoice<ValueType> const& PreScheduler<ValueType>::getChoice(uint_fast64_t modelState, uint_fast64_t memoryState) const {
+            STORM_LOG_ASSERT(memoryState < getNumberOfMemoryStates(), "Illegal memory state index");
+            STORM_LOG_ASSERT(modelState < schedulerChoices[memoryState].size(), "Illegal model state index");
+            return schedulerChoices[memoryState][modelState];
+        }
+
+
+        template <typename ValueType>
         void PreScheduler<ValueType>::printToStream(std::ostream& out, std::shared_ptr<storm::logic::ShieldExpression const> shieldingExpression, std::shared_ptr<storm::models::sparse::Model<ValueType>> model, bool skipUniqueChoices) const {
             STORM_LOG_THROW(model == nullptr || model->getNumberOfStates() == this->schedulerChoices.front().size(), storm::exceptions::InvalidOperationException, "The given model is not compatible with this scheduler.");
             STORM_LOG_THROW(this->isMemorylessScheduler(), storm::exceptions::InvalidOperationException, "The given scheduler is incompatible.");

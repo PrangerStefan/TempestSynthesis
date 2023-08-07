@@ -32,6 +32,14 @@ namespace storm {
             void setChoice(PreSchedulerChoice<ValueType> const& choice, uint_fast64_t modelState, uint_fast64_t memoryState);
 
             /*!
+             * Gets the choice defined by the scheduler for the given model and memory state.
+             *
+             * @param state The state for which to get the choice.
+             * @param memoryState the memory state which we consider.
+             */
+            PreSchedulerChoice<ValueType> const& getChoice(uint_fast64_t modelState, uint_fast64_t memoryState = 0) const;
+
+            /*!
              * Prints the scheduler to the given output stream.
              */
             void printToStream(std::ostream& out, std::shared_ptr<storm::logic::ShieldExpression const> shieldingExpression, std::shared_ptr<storm::models::sparse::Model<ValueType>> model = nullptr, bool skipUniqueChoices = false) const;
