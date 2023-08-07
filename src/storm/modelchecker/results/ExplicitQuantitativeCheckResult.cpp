@@ -234,7 +234,13 @@ namespace storm {
 
         template<typename ValueType>
         std::shared_ptr<tempest::shields::AbstractShield<ValueType,typename ExplicitQuantitativeCheckResult<ValueType>::IndexType>> const& ExplicitQuantitativeCheckResult<ValueType>::getShield() const {
-            STORM_LOG_THROW(this->hasScheduler(), storm::exceptions::InvalidOperationException, "Unable to retrieve non-existing scheduler.");
+            STORM_LOG_THROW(this->hasShield(), storm::exceptions::InvalidOperationException, "Unable to retrieve non-existing shield.");
+            return shield.get();
+        }
+
+        template<typename ValueType>
+        std::shared_ptr<tempest::shields::AbstractShield<ValueType,typename ExplicitQuantitativeCheckResult<ValueType>::IndexType>>& ExplicitQuantitativeCheckResult<ValueType>::getShield() {
+            STORM_LOG_THROW(this->hasShield(), storm::exceptions::InvalidOperationException, "Unable to retrieve non-existing shield.");
             return shield.get();
         }
 

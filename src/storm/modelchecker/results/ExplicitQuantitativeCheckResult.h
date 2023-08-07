@@ -85,6 +85,7 @@ namespace storm {
             
             void setShield(std::unique_ptr<tempest::shields::AbstractShield<ValueType, IndexType>> shield);
             std::shared_ptr<tempest::shields::AbstractShield<ValueType, IndexType>> const& getShield() const;
+            std::shared_ptr<tempest::shields::AbstractShield<ValueType, IndexType>>& getShield();
 
             storm::json<ValueType> toJson(boost::optional<storm::storage::sparse::StateValuations> const& stateValuations = boost::none) const;
             
