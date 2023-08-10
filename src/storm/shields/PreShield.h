@@ -16,6 +16,7 @@ namespace tempest {
             storm::storage::PreScheduler<ValueType> constructWithCompareType();
 
             virtual void printToStream(std::ostream& out, std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model) override;
+            virtual void printJsonToStream(std::ostream& out, std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model) override;
 
         private:
             std::vector<ValueType> choiceValues;

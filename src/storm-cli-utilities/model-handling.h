@@ -1048,7 +1048,7 @@ namespace storm {
                                                     auto shield = result->template asExplicitQuantitativeCheckResult<ValueType>().getShield();
                                                     STORM_PRINT_AND_LOG("Exporting shield ...");
                                                     
-                                                    storm::api::exportShield(sparseModel, shield);
+                                                    storm::api::exportShield(sparseModel, shield, shield->getShieldFileName());
                                                 }
                                             }
 

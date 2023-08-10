@@ -40,9 +40,15 @@ namespace storm {
             PreSchedulerChoice<ValueType> const& getChoice(uint_fast64_t modelState, uint_fast64_t memoryState = 0) const;
 
             /*!
-             * Prints the scheduler to the given output stream.
+             * Prints the pre scheduler to the given output stream.
              */
             void printToStream(std::ostream& out, std::shared_ptr<storm::logic::ShieldExpression const> shieldingExpression, std::shared_ptr<storm::models::sparse::Model<ValueType>> model = nullptr, bool skipUniqueChoices = false) const;
+
+             /*!
+             * Prints the pre scheduler in json format to the given output stream.
+             */
+            void printJsonToStream(std::ostream& out, std::shared_ptr<storm::models::sparse::Model<ValueType>> model = nullptr, bool skipUniqueChoices = false) const;
+
 
         private:
             boost::optional<storm::storage::MemoryStructure> memoryStructure;

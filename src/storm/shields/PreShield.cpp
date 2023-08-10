@@ -74,6 +74,11 @@ namespace tempest {
            this->construct().printToStream(out, this->shieldingExpression, model);
         }
 
+        template<typename ValueType, typename IndexType>
+        void PreShield<ValueType, IndexType>::printJsonToStream(std::ostream& out, std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model) {
+            this->construct().printJsonToStream(out, model);
+        }
+
 
         // Explicitly instantiate appropriate classes
         template class PreShield<double, typename storm::storage::SparseMatrix<double>::index_type>;

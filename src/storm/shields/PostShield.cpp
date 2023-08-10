@@ -73,6 +73,11 @@ namespace tempest {
            this->construct().printToStream(out, this->shieldingExpression, model);
         }
 
+        template<typename ValueType, typename IndexType>
+        void PostShield<ValueType, IndexType>::printJsonToStream(std::ostream& out, std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model) {
+            STORM_LOG_THROW(false, storm::exceptions::InvalidOperationException, "not supported yet");
+        }
+
 
         // Explicitly instantiate appropriate classes
         template class PostShield<double, typename storm::storage::SparseMatrix<double>::index_type>;
