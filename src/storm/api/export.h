@@ -65,10 +65,15 @@ namespace storm {
         }
 
         template <typename ValueType, typename IndexType>
-        void exportShield(std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, std::shared_ptr<tempest::shields::AbstractShield<ValueType, IndexType>> const& shield) {
+        void exportShield(std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, std::shared_ptr<tempest::shields::AbstractShield<ValueType, IndexType>> const& shield, std::string const& filename) {
             std::ofstream stream;
-            storm::utility::openFile(shield->getShieldFileName(), stream);
-            shield->printToStream(stream, model);
+            storm::utility::openFile(filename, stream);
+            std::string jsonFileExtension = ".json";
+            if (filename.size() > 4 && std::equal(jsonFileExtension.rbegin(), jsonFileExtension.rend(), filename.rbegin())) {
+                shield->printJsonToStream(stream, model);
+            } else {
+                shield->printToStream(stream, model);
+            }
             storm::utility::closeFile(stream);
         }
         

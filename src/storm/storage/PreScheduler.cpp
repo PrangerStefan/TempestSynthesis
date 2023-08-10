@@ -167,7 +167,7 @@ namespace storm {
                     storm::json<storm::RationalNumber> choicesJson;
 
                     for (auto const &choiceProbPair : choice.getChoiceMap()) {
-                        uint64_t globalChoiceIndex = model->getTransitionMatrix().getRowGroupIndices()[state] ;//+ choiceProbPair.first;
+                        uint64_t globalChoiceIndex = model->getTransitionMatrix().getRowGroupIndices()[state] + std::get<uint_fast64_t>(choiceProbPair);
                         storm::json<storm::RationalNumber> choiceJson;
                         if (model && model->hasChoiceOrigins() &&
                             model->getChoiceOrigins()->getIdentifier(globalChoiceIndex) !=
@@ -181,17 +181,17 @@ namespace storm {
                         }
                         choiceJson["index"] = globalChoiceIndex;
                         choiceJson["prob"] = storm::utility::convertNumber<storm::RationalNumber>(
-                                std::get<1>(choiceProbPair));
+                                std::get<ValueType>(choiceProbPair));
 
                         // Memory updates
                         if(!isMemorylessScheduler()) {
                             choiceJson["memory-updates"] = std::vector<storm::json<storm::RationalNumber>>();
-                            uint64_t row = model->getTransitionMatrix().getRowGroupIndices()[state]; //+ std::get<0>(choiceProbPair);
+                            uint64_t row = model->getTransitionMatrix().getRowGroupIndices()[state] + std::get<uint_fast64_t>(choiceProbPair);
                             for (auto entryIt = model->getTransitionMatrix().getRow(row).begin(); entryIt < model->getTransitionMatrix().getRow(row).end(); ++entryIt) {
                                 storm::json<storm::RationalNumber> updateJson;
                                 // next model state
                                 if (model && model->hasStateValuations()) {
-                                    updateJson["s'"] = model->getStateValuations().template toJson<storm::RationalNumber>(entryIt->getColumn());
+                                    updateJson["s'"] = model->getStateValuations().template toJson<storm::RationalNumber>(entryIt->getColumn());    
                                 } else {
                                     updateJson["s'"] = entryIt->getColumn();
                                 }

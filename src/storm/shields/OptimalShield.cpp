@@ -71,7 +71,7 @@ namespace tempest {
 
         template<typename ValueType, typename IndexType>
         void OptimalShield<ValueType, IndexType>::printJsonToStream(std::ostream& out, std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model) {
-            STORM_LOG_THROW(false, storm::exceptions::InvalidOperationException, "not supported yet");
+            this->construct().printJsonToStream(out, model);
         }
 
         // Explicitly instantiate appropriate classes

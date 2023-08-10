@@ -128,6 +128,79 @@ namespace storm {
             out << "___________________________________________________________________" << std::endl;
         }
 
+        template <typename ValueType>
+        void PostScheduler<ValueType>::printJsonToStream(std::ostream& out, std::shared_ptr<storm::models::sparse::Model<ValueType>> model, bool skipUniqueChoices) const {
+            // STORM_LOG_THROW(model == nullptr || model->getNumberOfStates() == schedulerChoices.front().size(), storm::exceptions::InvalidOperationException, "The given model is not compatible with this scheduler.");
+            // STORM_LOG_WARN_COND(!(skipUniqueChoices && model == nullptr), "Can not skip unique choices if the model is not given.");
+            // storm::json<storm::RationalNumber> output;
+            // for (uint64_t state = 0; state < schedulerChoices.front().size(); ++state) {
+            //     // Check whether the state is skipped
+            //     if (skipUniqueChoices && model != nullptr && model->getTransitionMatrix().getRowGroupSize(state) == 1) {
+            //         continue;
+            //     }
+
+            //     for (uint_fast64_t memoryState = 0; memoryState < getNumberOfMemoryStates(); ++memoryState) {
+            //         storm::json<storm::RationalNumber> stateChoicesJson;
+            //         if (model && model->hasStateValuations()) {
+            //             stateChoicesJson["s"] = model->getStateValuations().template toJson<storm::RationalNumber>(state);
+            //         } else {
+            //             stateChoicesJson["s"] = state;
+            //         }
+
+            //         if (!isMemorylessScheduler()) {
+            //             stateChoicesJson["m"] = memoryState;
+            //         }
+
+            //         auto const &choice = schedulerChoices[memoryState][state];
+            //         storm::json<storm::RationalNumber> choicesJson;
+
+            //         for (auto const &choiceProbPair : choice.getChoiceMap()) {
+            //             uint64_t globalChoiceIndex = model->getTransitionMatrix().getRowGroupIndices()[state] ;//+ choiceProbPair.first;
+            //             storm::json<storm::RationalNumber> choiceJson;
+            //             if (model && model->hasChoiceOrigins() &&
+            //                 model->getChoiceOrigins()->getIdentifier(globalChoiceIndex) !=
+            //                 model->getChoiceOrigins()->getIdentifierForChoicesWithNoOrigin()) {
+            //                 choiceJson["origin"] = model->getChoiceOrigins()->getChoiceAsJson(globalChoiceIndex);
+            //             }
+            //             if (model && model->hasChoiceLabeling()) {
+            //                 auto choiceLabels = model->getChoiceLabeling().getLabelsOfChoice(globalChoiceIndex);
+            //                 choiceJson["labels"] = std::vector<std::string>(choiceLabels.begin(),
+            //                                                                 choiceLabels.end());
+            //             }
+            //             choiceJson["index"] = globalChoiceIndex;
+            //             choiceJson["prob"] = storm::utility::convertNumber<storm::RationalNumber>(
+            //                     std::get<1>(choiceProbPair));
+
+            //             // Memory updates
+            //             if(!isMemorylessScheduler()) {
+            //                 choiceJson["memory-updates"] = std::vector<storm::json<storm::RationalNumber>>();
+            //                 uint64_t row = model->getTransitionMatrix().getRowGroupIndices()[state]; //+ std::get<0>(choiceProbPair);
+            //                 for (auto entryIt = model->getTransitionMatrix().getRow(row).begin(); entryIt < model->getTransitionMatrix().getRow(row).end(); ++entryIt) {
+            //                     storm::json<storm::RationalNumber> updateJson;
+            //                     // next model state
+            //                     if (model && model->hasStateValuations()) {
+            //                         updateJson["s'"] = model->getStateValuations().template toJson<storm::RationalNumber>(entryIt->getColumn());
+            //                     } else {
+            //                         updateJson["s'"] = entryIt->getColumn();
+            //                     }
+            //                     // next memory state
+            //                     updateJson["m'"] = this->memoryStructure->getSuccessorMemoryState(memoryState, entryIt - model->getTransitionMatrix().begin());
+            //                     choiceJson["memory-updates"].push_back(std::move(updateJson));
+            //                 }
+            //             }
+
+            //             choicesJson.push_back(std::move(choiceJson));
+            //         }
+            //         if (!choicesJson.is_null()) {
+            //             stateChoicesJson["c"] = std::move(choicesJson);
+            //             output.push_back(std::move(stateChoicesJson));
+            //         }
+            //     }
+            // }
+            // out << output.dump(4);
+        }
+
+
         template class PostScheduler<double>;
 #ifdef STORM_HAVE_CARL
         template class PostScheduler<storm::RationalNumber>;
