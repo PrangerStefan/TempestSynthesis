@@ -33,12 +33,6 @@ namespace tempest {
         std::string AbstractShield<ValueType, IndexType>::getClassName() const {
             return std::string(boost::core::demangled_name(BOOST_CORE_TYPEID(*this)));
         }
-
-        template<typename ValueType, typename IndexType>
-        std::string AbstractShield<ValueType, IndexType>::getShieldFileName() const {
-            return shieldingExpression->getFilename() + ".shield";
-        }
-
         
         // Explicitly instantiate appropriate
         template class AbstractShield<double, typename storm::storage::SparseMatrix<double>::index_type>;

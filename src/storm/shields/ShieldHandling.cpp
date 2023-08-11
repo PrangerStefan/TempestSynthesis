@@ -2,10 +2,6 @@
 
 namespace tempest {
     namespace shields {
-        std::string shieldFilename(std::shared_ptr<storm::logic::ShieldExpression const> const& shieldingExpression) {
-            return shieldingExpression->getFilename() + ".shield";
-        }
-
         template<typename ValueType, typename IndexType>
         std::unique_ptr<tempest::shields::AbstractShield<ValueType, IndexType>> createShield(std::shared_ptr<storm::models::sparse::Model<ValueType>> model, std::vector<ValueType> const& choiceValues, std::shared_ptr<storm::logic::ShieldExpression const> const& shieldingExpression, storm::OptimizationDirection optimizationDirection, storm::storage::BitVector relevantStates, boost::optional<storm::storage::BitVector> coalitionStates) {
             if(coalitionStates.is_initialized()) coalitionStates.get().complement();

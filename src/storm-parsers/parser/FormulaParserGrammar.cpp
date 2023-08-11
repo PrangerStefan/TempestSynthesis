@@ -180,7 +180,7 @@ namespace storm {
             constantDefinition.name("constant definition");
 
             // Shielding properties
-            shieldExpression = (qi::lit("<") > label > qi::lit(",") > shieldingType > -(qi::lit(",") > shieldComparison) > qi::lit(">"))[qi::_val = phoenix::bind(&FormulaParserGrammar::createShieldExpression, phoenix::ref(*this), qi::_2, qi::_1, qi::_3)];
+            shieldExpression = (qi::lit("<") > shieldingType > -(qi::lit(",") > shieldComparison) > qi::lit(">"))[qi::_val = phoenix::bind(&FormulaParserGrammar::createShieldExpression, phoenix::ref(*this), qi::_1, qi::_2)];
 
             shieldExpression.name("shield expression");
 
@@ -645,12 +645,12 @@ namespace storm {
             return std::make_pair(comparisonType, value);
         }
 
-        std::shared_ptr<storm::logic::ShieldExpression const> FormulaParserGrammar::createShieldExpression(storm::logic::ShieldingType type, std::string name, boost::optional<std::pair<storm::logic::ShieldComparison, double>> comparisonStruct) {
+        std::shared_ptr<storm::logic::ShieldExpression const> FormulaParserGrammar::createShieldExpression(storm::logic::ShieldingType type, boost::optional<std::pair<storm::logic::ShieldComparison, double>> comparisonStruct) {
             if(comparisonStruct.is_initialized()) {
-                return std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(type, name, comparisonStruct.get().first, comparisonStruct.get().second));
+                return std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(type, comparisonStruct.get().first, comparisonStruct.get().second));
             } else {
                 STORM_LOG_INFO("Construction of shield without a comparison parameter (lambda or gamma) will default to 'lambda=0'");
-                return std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(type, name));
+                return std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(type));
             }
         }
 

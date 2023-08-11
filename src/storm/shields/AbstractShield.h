@@ -49,8 +49,7 @@ namespace tempest {
             storm::OptimizationDirection getOptimizationDirection();
 
             std::string getClassName() const;
-            std::string getShieldFileName() const;
-
+            
             virtual void printToStream(std::ostream& out, std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model) = 0;
             virtual void printJsonToStream(std::ostream& out, std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model) = 0;
 

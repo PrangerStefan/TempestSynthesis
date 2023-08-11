@@ -695,6 +695,7 @@ namespace storm {
 
                 std::vector<ValueType> choiceValues = std::vector<ValueType>(transitionMatrix.getRowGroupIndices().at(transitionMatrix.getRowGroupIndices().size() - 1), storm::utility::zero<ValueType>());
                 auto choice_it = maybeStateChoiceValues.begin();
+                // TODO THIS IS BUGGY!! 
                 for(uint state = 0; state < transitionMatrix.getRowGroupIndices().size() - 1; state++) {
                     uint rowGroupSize = transitionMatrix.getRowGroupIndices().at(state + 1) - transitionMatrix.getRowGroupIndices().at(state);
                     if (qualitativeStateSets.maybeStates.get(state)) {
