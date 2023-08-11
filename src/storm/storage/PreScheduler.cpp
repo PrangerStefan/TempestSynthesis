@@ -165,48 +165,50 @@ namespace storm {
 
                     auto const &choice = schedulerChoices[memoryState][state];
                     storm::json<storm::RationalNumber> choicesJson;
-
-                    for (auto const &choiceProbPair : choice.getChoiceMap()) {
-                        uint64_t globalChoiceIndex = model->getTransitionMatrix().getRowGroupIndices()[state] + std::get<uint_fast64_t>(choiceProbPair);
-                        storm::json<storm::RationalNumber> choiceJson;
-                        if (model && model->hasChoiceOrigins() &&
-                            model->getChoiceOrigins()->getIdentifier(globalChoiceIndex) !=
-                            model->getChoiceOrigins()->getIdentifierForChoicesWithNoOrigin()) {
-                            choiceJson["origin"] = model->getChoiceOrigins()->getChoiceAsJson(globalChoiceIndex);
-                        }
-                        if (model && model->hasChoiceLabeling()) {
-                            auto choiceLabels = model->getChoiceLabeling().getLabelsOfChoice(globalChoiceIndex);
-                            choiceJson["labels"] = std::vector<std::string>(choiceLabels.begin(),
-                                                                            choiceLabels.end());
-                        }
-                        choiceJson["index"] = globalChoiceIndex;
-                        choiceJson["prob"] = storm::utility::convertNumber<storm::RationalNumber>(
-                                std::get<ValueType>(choiceProbPair));
-
-                        // Memory updates
-                        if(!isMemorylessScheduler()) {
-                            choiceJson["memory-updates"] = std::vector<storm::json<storm::RationalNumber>>();
-                            uint64_t row = model->getTransitionMatrix().getRowGroupIndices()[state] + std::get<uint_fast64_t>(choiceProbPair);
-                            for (auto entryIt = model->getTransitionMatrix().getRow(row).begin(); entryIt < model->getTransitionMatrix().getRow(row).end(); ++entryIt) {
-                                storm::json<storm::RationalNumber> updateJson;
-                                // next model state
-                                if (model && model->hasStateValuations()) {
-                                    updateJson["s'"] = model->getStateValuations().template toJson<storm::RationalNumber>(entryIt->getColumn());    
-                                } else {
-                                    updateJson["s'"] = entryIt->getColumn();
-                                }
-                                // next memory state
-                                updateJson["m'"] = this->memoryStructure->getSuccessorMemoryState(memoryState, entryIt - model->getTransitionMatrix().begin());
-                                choiceJson["memory-updates"].push_back(std::move(updateJson));
+                    if (!choice.getChoiceMap().empty()) {
+                        for (auto const &choiceProbPair : choice.getChoiceMap()) {
+                            uint64_t globalChoiceIndex = model->getTransitionMatrix().getRowGroupIndices()[state] + std::get<uint_fast64_t>(choiceProbPair);
+                            storm::json<storm::RationalNumber> choiceJson;
+                            if (model && model->hasChoiceOrigins() &&
+                                model->getChoiceOrigins()->getIdentifier(globalChoiceIndex) !=
+                                model->getChoiceOrigins()->getIdentifierForChoicesWithNoOrigin()) {
+                                choiceJson["origin"] = model->getChoiceOrigins()->getChoiceAsJson(globalChoiceIndex);
                             }
-                        }
+                            if (model && model->hasChoiceLabeling()) {
+                                auto choiceLabels = model->getChoiceLabeling().getLabelsOfChoice(globalChoiceIndex);
+                                choiceJson["labels"] = std::vector<std::string>(choiceLabels.begin(),
+                                                                                choiceLabels.end());
+                            }
+                            choiceJson["index"] = globalChoiceIndex;
+                            choiceJson["prob"] = storm::utility::convertNumber<storm::RationalNumber>(
+                                    std::get<ValueType>(choiceProbPair));
 
-                        choicesJson.push_back(std::move(choiceJson));
+                            // Memory updates
+                            if(!isMemorylessScheduler()) {
+                                choiceJson["memory-updates"] = std::vector<storm::json<storm::RationalNumber>>();
+                                uint64_t row = model->getTransitionMatrix().getRowGroupIndices()[state] + std::get<uint_fast64_t>(choiceProbPair);
+                                for (auto entryIt = model->getTransitionMatrix().getRow(row).begin(); entryIt < model->getTransitionMatrix().getRow(row).end(); ++entryIt) {
+                                    storm::json<storm::RationalNumber> updateJson;
+                                    // next model state
+                                    if (model && model->hasStateValuations()) {
+                                        updateJson["s'"] = model->getStateValuations().template toJson<storm::RationalNumber>(entryIt->getColumn());    
+                                    } else {
+                                        updateJson["s'"] = entryIt->getColumn();
+                                    }
+                                    // next memory state
+                                    updateJson["m'"] = this->memoryStructure->getSuccessorMemoryState(memoryState, entryIt - model->getTransitionMatrix().begin());
+                                    choiceJson["memory-updates"].push_back(std::move(updateJson));
+                                }
+                            }
+
+                            choicesJson.push_back(std::move(choiceJson));
+                        }
+                    } else {
+                        choicesJson = "undefined";
                     }
-                    if (!choicesJson.is_null()) {
-                        stateChoicesJson["c"] = std::move(choicesJson);
-                        output.push_back(std::move(stateChoicesJson));
-                    }
+                 
+                    stateChoicesJson["c"] = std::move(choicesJson);
+                    output.push_back(std::move(stateChoicesJson));
                 }
             }
             out << output.dump(4);
