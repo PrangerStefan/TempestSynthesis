@@ -107,6 +107,16 @@ namespace storm {
                  std::string getExportSchedulerFilename() const;
 
                 /*!
+                 * Retrieves whether a shield is to be exported.
+                 */
+                bool isExportShieldSet() const;
+
+                /*!
+                 * Retrieves a filename to which a shield will be exported.
+                 */
+                std::string getExportShieldFilename() const;
+
+                /*!
                  * Retrieves whether the check result should be exported.
                  */
                 bool isExportCheckResultSet() const;
@@ -365,6 +375,7 @@ namespace storm {
                 static const std::string exportCdfOptionName;
                 static const std::string exportCdfOptionShortName;
                 static const std::string exportSchedulerOptionName;
+                static const std::string exportShieldOptionName;
                 static const std::string exportCheckResultOptionName;
                 static const std::string explicitOptionName;
                 static const std::string explicitOptionShortName;
