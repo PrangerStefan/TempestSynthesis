@@ -5,6 +5,7 @@
 #include "storm/api/builder.h"
 #include "storm-parsers/api/model_descriptions.h"
 #include "storm/api/properties.h"
+#include "storm/api/export.h"
 #include "storm-parsers/api/properties.h"
 
 #include "storm/models/sparse/Smg.h"
@@ -107,23 +108,23 @@ namespace {
         fileNames.push_back("rightDecisionPostSafetyGamma05PminF5");
 
         // testing create shielding expressions
-        std::string formulasString = "<" + fileNames[0] + ", PreSafety, lambda=0.9> <<hiker>> Pmax=? [ F <=3 \"target\" ]";
-        formulasString += "; <" + fileNames[1] + ", PreSafety, lambda=0.9> <<native>> Pmin=? [ F <=3 \"target\" ]";
-        formulasString += "; <" + fileNames[2] + ", PreSafety, gamma=0.9> <<hiker>> Pmax=? [ F <=3 \"target\" ]";
-        formulasString += "; <" + fileNames[3] + ", PreSafety, gamma=0.9> <<native>> Pmin=? [ F <=3 \"target\" ]";
-        formulasString += "; <" + fileNames[4] + ", PostSafety, lambda=0.9> <<hiker>> Pmax=? [ F <=3 \"target\" ]";
-        formulasString += "; <" + fileNames[5] + ", PostSafety, lambda=0.9> <<native>> Pmin=? [ F <=3 \"target\" ]";
-        formulasString += "; <" + fileNames[6] + ", PostSafety, gamma=0.9> <<hiker>> Pmax=? [ F <=3 \"target\" ]";
-        formulasString += "; <" + fileNames[7] + ", PostSafety, gamma=0.9> <<native>> Pmin=? [ F <=3 \"target\" ]";
+        std::string formulasString = "<PreSafety, lambda=0.9> <<hiker>> Pmax=? [ F <=3 \"target\" ]";
+        formulasString += "; <PreSafety, lambda=0.9> <<native>> Pmin=? [ F <=3 \"target\" ]";
+        formulasString += "; <PreSafety, gamma=0.9> <<hiker>> Pmax=? [ F <=3 \"target\" ]";
+        formulasString += "; <PreSafety, gamma=0.9> <<native>> Pmin=? [ F <=3 \"target\" ]";
+        formulasString += "; <PostSafety, lambda=0.9> <<hiker>> Pmax=? [ F <=3 \"target\" ]";
+        formulasString += "; <PostSafety, lambda=0.9> <<native>> Pmin=? [ F <=3 \"target\" ]";
+        formulasString += "; <PostSafety, gamma=0.9> <<hiker>> Pmax=? [ F <=3 \"target\" ]";
+        formulasString += "; <PostSafety, gamma=0.9> <<native>> Pmin=? [ F <=3 \"target\" ]";
 
-        formulasString += "; <" + fileNames[8] + ", PreSafety, lambda=0.5> <<hiker>> Pmax=? [ F <=5 \"target\" ]";
-        formulasString += "; <" + fileNames[9] + ", PreSafety, lambda=0.5> <<native>> Pmin=? [ F <=5 \"target\" ]";
-        formulasString += "; <" + fileNames[10] + ", PreSafety, gamma=0.5> <<hiker>> Pmax=? [ F <=5 \"target\" ]";
-        formulasString += "; <" + fileNames[11] + ", PreSafety, gamma=0.5> <<native>> Pmin=? [ F <=5 \"target\" ]";
-        formulasString += "; <" + fileNames[12] + ", PostSafety, lambda=0.5> <<hiker>> Pmax=? [ F <=5 \"target\" ]";
-        formulasString += "; <" + fileNames[13] + ", PostSafety, lambda=0.5> <<native>> Pmin=? [ F <=5 \"target\" ]";
-        formulasString += "; <" + fileNames[14] + ", PostSafety, gamma=0.5> <<hiker>> Pmax=? [ F <=5 \"target\" ]";
-        formulasString += "; <" + fileNames[15] + ", PostSafety, gamma=0.5> <<native>> Pmin=? [ F <=5 \"target\" ]";
+        formulasString += "; <PreSafety, lambda=0.5> <<hiker>> Pmax=? [ F <=5 \"target\" ]";
+        formulasString += "; <PreSafety, lambda=0.5> <<native>> Pmin=? [ F <=5 \"target\" ]";
+        formulasString += "; <PreSafety, gamma=0.5> <<hiker>> Pmax=? [ F <=5 \"target\" ]";
+        formulasString += "; <PreSafety, gamma=0.5> <<native>> Pmin=? [ F <=5 \"target\" ]";
+        formulasString += "; <PostSafety, lambda=0.5> <<hiker>> Pmax=? [ F <=5 \"target\" ]";
+        formulasString += "; <PostSafety, lambda=0.5> <<native>> Pmin=? [ F <=5 \"target\" ]";
+        formulasString += "; <PostSafety, gamma=0.5> <<hiker>> Pmax=? [ F <=5 \"target\" ]";
+        formulasString += "; <PostSafety, gamma=0.5> <<native>> Pmin=? [ F <=5 \"target\" ]";
 
         auto modelFormulas = this->buildModelFormulas(STORM_TEST_RESOURCES_DIR "/smg/rightDecision.nm", formulasString);
         auto smg = std::move(modelFormulas.first);
@@ -147,131 +148,179 @@ namespace {
 
         // shielding results
         filename = fileNames[0];
-        auto preSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePreSafety, filename, comparisonRelative, value09));
+        auto preSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePreSafety, comparisonRelative, value09));
         tasks[0].setShieldingExpression(preSafetyShieldingExpression);
-        EXPECT_TRUE(tasks[0].isShieldingTask());
+        EXPECT_TRUE(tasks[0].isShieldingTask());        
         auto result = checker.check(this->env(), tasks[0]);
+        EXPECT_TRUE(result->isExplicitQuantitativeCheckResult());
+        EXPECT_TRUE(result->hasShield());
+        storm::api::exportShield<ValueType>(smg, result->template asExplicitQuantitativeCheckResult<ValueType>().getShield() , filename + ".shield");
         this->getStringsToCompare(filename, shieldingString, compareFileString);
         EXPECT_EQ(shieldingString, compareFileString);
 
         filename = fileNames[1];
-        preSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePreSafety, filename, comparisonRelative, value09));
+        preSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePreSafety, comparisonRelative, value09));
         tasks[1].setShieldingExpression(preSafetyShieldingExpression);
         EXPECT_TRUE(tasks[1].isShieldingTask());
         result = checker.check(this->env(), tasks[1]);
+        EXPECT_TRUE(result->isExplicitQuantitativeCheckResult());
+        EXPECT_TRUE(result->hasShield());
+        storm::api::exportShield<ValueType>(smg, result->template asExplicitQuantitativeCheckResult<ValueType>().getShield() , filename + ".shield");
         this->getStringsToCompare(filename, shieldingString, compareFileString);
         EXPECT_EQ(shieldingString, compareFileString);
 
         filename = fileNames[2];
-        preSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePreSafety, filename, comparisonAbsolute, value09));
+        preSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePreSafety, comparisonAbsolute, value09));
         tasks[2].setShieldingExpression(preSafetyShieldingExpression);
         EXPECT_TRUE(tasks[2].isShieldingTask());
         result = checker.check(this->env(), tasks[2]);
+        EXPECT_TRUE(result->isExplicitQuantitativeCheckResult());
+        EXPECT_TRUE(result->hasShield());
+        storm::api::exportShield<ValueType>(smg, result->template asExplicitQuantitativeCheckResult<ValueType>().getShield() , filename + ".shield");
         this->getStringsToCompare(filename, shieldingString, compareFileString);
         EXPECT_EQ(shieldingString, compareFileString);
 
         filename = fileNames[3];
-        preSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePreSafety, filename, comparisonAbsolute, value09));
+        preSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePreSafety, comparisonAbsolute, value09));
         tasks[3].setShieldingExpression(preSafetyShieldingExpression);
         EXPECT_TRUE(tasks[3].isShieldingTask());
         result = checker.check(this->env(), tasks[3]);
+        EXPECT_TRUE(result->isExplicitQuantitativeCheckResult());
+        EXPECT_TRUE(result->hasShield());
+        storm::api::exportShield<ValueType>(smg, result->template asExplicitQuantitativeCheckResult<ValueType>().getShield() , filename + ".shield");
         this->getStringsToCompare(filename, shieldingString, compareFileString);
         EXPECT_EQ(shieldingString, compareFileString);
 
         filename = fileNames[4];
-        auto postSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePostSafety, filename, comparisonRelative, value09));
+        auto postSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePostSafety, comparisonRelative, value09));
         tasks[4].setShieldingExpression(postSafetyShieldingExpression);
         EXPECT_TRUE(tasks[4].isShieldingTask());
         result = checker.check(this->env(), tasks[4]);
+        EXPECT_TRUE(result->isExplicitQuantitativeCheckResult());
+        EXPECT_TRUE(result->hasShield());
+        storm::api::exportShield<ValueType>(smg, result->template asExplicitQuantitativeCheckResult<ValueType>().getShield() , filename + ".shield");
         this->getStringsToCompare(filename, shieldingString, compareFileString);
         EXPECT_EQ(shieldingString, compareFileString);
 
         filename = fileNames[5];
-        postSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePostSafety, filename, comparisonRelative, value09));
+        postSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePostSafety, comparisonRelative, value09));
         tasks[5].setShieldingExpression(postSafetyShieldingExpression);
         EXPECT_TRUE(tasks[5].isShieldingTask());
         result = checker.check(this->env(), tasks[5]);
+        EXPECT_TRUE(result->isExplicitQuantitativeCheckResult());
+        EXPECT_TRUE(result->hasShield());
+        storm::api::exportShield<ValueType>(smg, result->template asExplicitQuantitativeCheckResult<ValueType>().getShield() , filename + ".shield");
         this->getStringsToCompare(filename, shieldingString, compareFileString);
         EXPECT_EQ(shieldingString, compareFileString);
 
         filename = fileNames[6];
-        postSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePostSafety, filename, comparisonAbsolute, value09));
+        postSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePostSafety, comparisonAbsolute, value09));
         tasks[6].setShieldingExpression(postSafetyShieldingExpression);
         EXPECT_TRUE(tasks[6].isShieldingTask());
         result = checker.check(this->env(), tasks[6]);
+        EXPECT_TRUE(result->isExplicitQuantitativeCheckResult());
+        EXPECT_TRUE(result->hasShield());
+        storm::api::exportShield<ValueType>(smg, result->template asExplicitQuantitativeCheckResult<ValueType>().getShield() , filename + ".shield");
         this->getStringsToCompare(filename, shieldingString, compareFileString);
         EXPECT_EQ(shieldingString, compareFileString);
 
         filename = fileNames[7];
-        postSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePostSafety, filename, comparisonAbsolute, value09));
+        postSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePostSafety, comparisonAbsolute, value09));
         tasks[7].setShieldingExpression(postSafetyShieldingExpression);
         EXPECT_TRUE(tasks[7].isShieldingTask());
         result = checker.check(this->env(), tasks[7]);
+        EXPECT_TRUE(result->isExplicitQuantitativeCheckResult());
+        EXPECT_TRUE(result->hasShield());
+        storm::api::exportShield<ValueType>(smg, result->template asExplicitQuantitativeCheckResult<ValueType>().getShield() , filename + ".shield");
         this->getStringsToCompare(filename, shieldingString, compareFileString);
         EXPECT_EQ(shieldingString, compareFileString);
 
 
         filename = fileNames[8];
-        preSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePreSafety, filename, comparisonRelative, value05));
+        preSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePreSafety, comparisonRelative, value05));
         tasks[8].setShieldingExpression(preSafetyShieldingExpression);
         EXPECT_TRUE(tasks[8].isShieldingTask());
         result = checker.check(this->env(), tasks[8]);
+        EXPECT_TRUE(result->isExplicitQuantitativeCheckResult());
+        EXPECT_TRUE(result->hasShield());
+        storm::api::exportShield<ValueType>(smg, result->template asExplicitQuantitativeCheckResult<ValueType>().getShield() , filename + ".shield");
         this->getStringsToCompare(filename, shieldingString, compareFileString);
         EXPECT_EQ(shieldingString, compareFileString);
 
         filename = fileNames[9];
-        preSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePreSafety, filename, comparisonRelative, value05));
+        preSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePreSafety, comparisonRelative, value05));
         tasks[9].setShieldingExpression(preSafetyShieldingExpression);
         EXPECT_TRUE(tasks[9].isShieldingTask());
         result = checker.check(this->env(), tasks[9]);
+        EXPECT_TRUE(result->isExplicitQuantitativeCheckResult());
+        EXPECT_TRUE(result->hasShield());
+        storm::api::exportShield<ValueType>(smg, result->template asExplicitQuantitativeCheckResult<ValueType>().getShield() , filename + ".shield");
         this->getStringsToCompare(filename, shieldingString, compareFileString);
         EXPECT_EQ(shieldingString, compareFileString);
 
         filename = fileNames[10];
-        preSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePreSafety, filename, comparisonAbsolute, value05));
+        preSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePreSafety, comparisonAbsolute, value05));
         tasks[10].setShieldingExpression(preSafetyShieldingExpression);
         EXPECT_TRUE(tasks[10].isShieldingTask());
         result = checker.check(this->env(), tasks[10]);
+        EXPECT_TRUE(result->isExplicitQuantitativeCheckResult());
+        EXPECT_TRUE(result->hasShield());
+        storm::api::exportShield<ValueType>(smg, result->template asExplicitQuantitativeCheckResult<ValueType>().getShield() , filename + ".shield");
         this->getStringsToCompare(filename, shieldingString, compareFileString);
         EXPECT_EQ(shieldingString, compareFileString);
 
         filename = fileNames[11];
-        preSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePreSafety, filename, comparisonAbsolute, value05));
+        preSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePreSafety, comparisonAbsolute, value05));
         tasks[11].setShieldingExpression(preSafetyShieldingExpression);
         EXPECT_TRUE(tasks[11].isShieldingTask());
         result = checker.check(this->env(), tasks[11]);
+        EXPECT_TRUE(result->isExplicitQuantitativeCheckResult());
+        EXPECT_TRUE(result->hasShield());
+        storm::api::exportShield<ValueType>(smg, result->template asExplicitQuantitativeCheckResult<ValueType>().getShield() , filename + ".shield");
         this->getStringsToCompare(filename, shieldingString, compareFileString);
         EXPECT_EQ(shieldingString, compareFileString);
 
         filename = fileNames[12];
-        postSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePostSafety, filename, comparisonRelative, value05));
+        postSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePostSafety, comparisonRelative, value05));
         tasks[12].setShieldingExpression(postSafetyShieldingExpression);
         EXPECT_TRUE(tasks[12].isShieldingTask());
         result = checker.check(this->env(), tasks[12]);
+        EXPECT_TRUE(result->isExplicitQuantitativeCheckResult());
+        EXPECT_TRUE(result->hasShield());
+        storm::api::exportShield<ValueType>(smg, result->template asExplicitQuantitativeCheckResult<ValueType>().getShield() , filename + ".shield");
         this->getStringsToCompare(filename, shieldingString, compareFileString);
         EXPECT_EQ(shieldingString, compareFileString);
 
         filename = fileNames[13];
-        postSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePostSafety, filename, comparisonRelative, value05));
+        postSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePostSafety, comparisonRelative, value05));
         tasks[13].setShieldingExpression(postSafetyShieldingExpression);
         EXPECT_TRUE(tasks[13].isShieldingTask());
         result = checker.check(this->env(), tasks[13]);
+        EXPECT_TRUE(result->isExplicitQuantitativeCheckResult());
+        EXPECT_TRUE(result->hasShield());
+        storm::api::exportShield<ValueType>(smg, result->template asExplicitQuantitativeCheckResult<ValueType>().getShield() , filename + ".shield");
         this->getStringsToCompare(filename, shieldingString, compareFileString);
         EXPECT_EQ(shieldingString, compareFileString);
 
         filename = fileNames[14];
-        postSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePostSafety, filename, comparisonAbsolute, value05));
+        postSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePostSafety, comparisonAbsolute, value05));
         tasks[14].setShieldingExpression(postSafetyShieldingExpression);
         EXPECT_TRUE(tasks[14].isShieldingTask());
         result = checker.check(this->env(), tasks[14]);
+        EXPECT_TRUE(result->isExplicitQuantitativeCheckResult());
+        EXPECT_TRUE(result->hasShield());
+        storm::api::exportShield<ValueType>(smg, result->template asExplicitQuantitativeCheckResult<ValueType>().getShield() , filename + ".shield");
         this->getStringsToCompare(filename, shieldingString, compareFileString);
         EXPECT_EQ(shieldingString, compareFileString);
 
         filename = fileNames[15];
-        postSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePostSafety, filename, comparisonAbsolute, value05));
+        postSafetyShieldingExpression = std::shared_ptr<storm::logic::ShieldExpression>(new storm::logic::ShieldExpression(typePostSafety, comparisonAbsolute, value05));
         tasks[15].setShieldingExpression(postSafetyShieldingExpression);
         EXPECT_TRUE(tasks[15].isShieldingTask());
         result = checker.check(this->env(), tasks[15]);
+        EXPECT_TRUE(result->isExplicitQuantitativeCheckResult());
+        EXPECT_TRUE(result->hasShield());
+        storm::api::exportShield<ValueType>(smg, result->template asExplicitQuantitativeCheckResult<ValueType>().getShield() , filename + ".shield");
         this->getStringsToCompare(filename, shieldingString, compareFileString);
         EXPECT_EQ(shieldingString, compareFileString);
     }
