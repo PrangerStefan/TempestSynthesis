@@ -160,7 +160,7 @@ namespace storm {
                             auto choiceOriginCorrectionJson = model->getChoiceOrigins()->getChoiceAsJson(globalChoiceCorrectionIndex);
                             std::string choiceActionLabel = choiceOriginJson["action-label"];
                             std::string choiceCorrectionActionLabel = choiceOriginCorrectionJson["action-label"];
-                            choiceOriginJson["action-label"] = choiceActionLabel.append(": ").append(choiceCorrectionActionLabel);
+                            choiceOriginJson["action-label"] = choiceActionLabel.append(": ").append(choiceCorrectionActionLabel).append("\n");
                             choiceJson["origin"] = choiceOriginJson;                            
                         }
                         if (model && model->hasChoiceLabeling()) {

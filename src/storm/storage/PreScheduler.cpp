@@ -172,7 +172,10 @@ namespace storm {
                             if (model && model->hasChoiceOrigins() &&
                                 model->getChoiceOrigins()->getIdentifier(globalChoiceIndex) !=
                                 model->getChoiceOrigins()->getIdentifierForChoicesWithNoOrigin()) {
-                                choiceJson["origin"] = model->getChoiceOrigins()->getChoiceAsJson(globalChoiceIndex);
+                                auto choiceOriginJson = model->getChoiceOrigins()->getChoiceAsJson(globalChoiceIndex);
+                                std::string choiceActionLabel = choiceOriginJson["action-label"];
+                                choiceOriginJson["action-label"] = choiceActionLabel.append("\n");
+                                choiceJson["origin"] = choiceOriginJson;
                             }
                             if (model && model->hasChoiceLabeling()) {
                                 auto choiceLabels = model->getChoiceLabeling().getLabelsOfChoice(globalChoiceIndex);
