@@ -4,6 +4,7 @@
 #include "storm/solver/LinearEquationSolver.h"
 #include "storm/solver/MinMaxLinearEquationSolver.h"
 #include "storm/solver/Multiplier.h"
+#include "storm/storage/MaximalEndComponentDecomposition.h"
 
 namespace storm {
     class Environment;
@@ -19,7 +20,7 @@ namespace storm {
                 template <typename ValueType>
                 class SoundGameViHelper {
                 public:
-                    SoundGameViHelper(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::BitVector statesOfCoalition, OptimizationDirection const& optimizationDirection);
+                    SoundGameViHelper(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::SparseMatrix<ValueType> const& backwardTransitions, storm::storage::BitVector statesOfCoalition, OptimizationDirection const& optimizationDirection);
 
                     void prepareSolversAndMultipliers(const Environment& env);
 
@@ -73,9 +74,9 @@ namespace storm {
                      */
                     void performIterationStep(Environment const& env, storm::solver::OptimizationDirection const dir, std::vector<uint64_t>* choices = nullptr);
 
+                    void deflate(storm::storage::MaximalEndComponentDecomposition<ValueType> const MECD, storage::SparseMatrix<ValueType> const restrictedMatrix, std::vector<ValueType>& xU);
+
                     void reduceChoiceValues(std::vector<ValueType>& choiceValues, storm::storage::BitVector* result);
-                    //
-                    // für alle minimizer states -> reduce zu optimal actions
 
                     /*!
                      * Checks whether the curently computed value achieves the desired precision
@@ -111,6 +112,7 @@ namespace storm {
                     std::vector<uint64_t>& getProducedOptimalChoices();
 
                     storm::storage::SparseMatrix<ValueType> _transitionMatrix;
+                    storm::storage::SparseMatrix<ValueType> _backwardTransitions;
                     storm::storage::BitVector _statesOfCoalition;
                     std::vector<ValueType> _x, _x1L, _x2L, _x1U, _x2U;
                     std::unique_ptr<storm::solver::Multiplier<ValueType>> _multiplier;

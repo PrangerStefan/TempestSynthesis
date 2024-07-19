@@ -14,7 +14,7 @@ namespace storm {
             namespace internal {
 
                 template <typename ValueType>
-                SoundGameViHelper<ValueType>::SoundGameViHelper(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::BitVector statesOfCoalition, OptimizationDirection const& optimizationDirection) : _transitionMatrix(transitionMatrix), _statesOfCoalition(statesOfCoalition), _optimizationDirection(optimizationDirection) {
+                SoundGameViHelper<ValueType>::SoundGameViHelper(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::SparseMatrix<ValueType> const& backwardTransitions, storm::storage::BitVector statesOfCoalition, OptimizationDirection const& optimizationDirection) : _transitionMatrix(transitionMatrix), _backwardTransitions(backwardTransitions), _statesOfCoalition(statesOfCoalition), _optimizationDirection(optimizationDirection) {
                     // Intentionally left empty.
                 }
 
@@ -34,7 +34,6 @@ namespace storm {
                     // Get precision for convergence check.
                     ValueType precision = storm::utility::convertNumber<ValueType>(env.solver().game().getPrecision());
 
-                    STORM_LOG_DEBUG("hello" << "world");
                     uint64_t maxIter = env.solver().game().getMaximalNumberOfIterations();
                     //_x1.assign(_transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
                     _x1L = xL;
@@ -97,14 +96,48 @@ namespace storm {
 
                     _multiplier->multiplyAndReduce(env, dir, xOldU(), nullptr, xNewU(), nullptr, &_statesOfCoalition);
 
+                    // restricting the none optimal minimizer choices
+                    storage::SparseMatrix<ValueType> restrictedTransMatrix = this->_transitionMatrix.restrictRows(reducedMinimizerActions);
+
+                   // storage::SparseMatrix<ValueType> restrictedBackMatrix = this->_backwardTransitions.restrictRows(reducedMinimizerActions);
+                    STORM_LOG_DEBUG("restricted Transition: \n" << restrictedTransMatrix);
+
                     // TODO Fabian: find_MSECs() & deflate()
+                    storm::storage::MaximalEndComponentDecomposition<ValueType> MECD = storm::storage::MaximalEndComponentDecomposition<ValueType>(restrictedTransMatrix, _backwardTransitions);
+
+                    STORM_LOG_DEBUG("MECD: \n" << MECD);
+                    // deflate(MECD,restrictedTransMatrix, xNewU());
+                }
+
+                template <typename ValueType>
+                void SoundGameViHelper<ValueType>::deflate(storm::storage::MaximalEndComponentDecomposition<ValueType> const MECD, storage::SparseMatrix<ValueType> const restrictedMatrix, std::vector<ValueType>& xU)
+                {
+                 /*   auto rowGroupIndices = restrictedMatrix.getRowGroupIndices();
+                    auto mec_it = MECD.begin();
+
+
+                    for(uint state = 0; state < rowGroupIndices.size() - 1; state++) {
+                        uint rowGroupSize = rowGroupIndices[state + 1] - rowGroupIndices[state];
+                        ValueType optChoice;
+                        if (!_minimizerStates[state]) {  // check if current state is maximizer state
+                            // getting the optimal minimizer choice for the given state
+                            optChoice = *std::min_element(choice_it, choice_it + rowGroupSize);
+
+                            for (uint choice = 0; choice < rowGroupSize; choice++, choice_it++) {
+                                if (*choice_it > optChoice) {
+                                    result->set(rowGroupIndices[state] + choice, 0);
+                                }
+                            }
+                            // reducing the xNew() (choiceValues) vector for minimizer states
+                            choiceValues[state] = optChoice;
+                        }
+                    } */
                 }
 
                 template <typename ValueType>
                 void SoundGameViHelper<ValueType>::reduceChoiceValues(std::vector<ValueType>& choiceValues, storm::storage::BitVector* result)
                 {
-                    // result BitVec should be initialized with 1s outside the function
-                    // restrict rows
+                    // result BitVec should be initialized with 1s outside the method
 
                     auto rowGroupIndices = this->_transitionMatrix.getRowGroupIndices();
                     auto choice_it = choiceValues.begin();
@@ -137,8 +170,6 @@ namespace storm {
                         }
                     }
                     choiceValues.resize(this->_transitionMatrix.getRowGroupCount());
-                    STORM_LOG_DEBUG("reduced BitVec: " << *result);
-                    STORM_LOG_DEBUG("reduced x Vector: " << choiceValues);
                 }
 
 
@@ -176,6 +207,7 @@ namespace storm {
                 void SoundGameViHelper<ValueType>::setProduceScheduler(bool value) {
                     _produceScheduler = value;
                 }
+
 
                 template <typename ValueType>
                 bool SoundGameViHelper<ValueType>::isProduceSchedulerSet() const {
