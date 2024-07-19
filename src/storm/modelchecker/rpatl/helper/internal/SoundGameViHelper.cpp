@@ -14,7 +14,7 @@ namespace storm {
             namespace internal {
 
                 template <typename ValueType>
-                SoundGameViHelper<ValueType>::SoundGameViHelper(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::BitVector statesOfCoalition) : _transitionMatrix(transitionMatrix), _statesOfCoalition(statesOfCoalition) {
+                SoundGameViHelper<ValueType>::SoundGameViHelper(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::BitVector statesOfCoalition, OptimizationDirection const& optimizationDirection) : _transitionMatrix(transitionMatrix), _statesOfCoalition(statesOfCoalition), _optimizationDirection(optimizationDirection) {
                     // Intentionally left empty.
                 }
 
@@ -23,6 +23,7 @@ namespace storm {
                     STORM_LOG_DEBUG("\n" << _transitionMatrix);
                     _multiplier = storm::solver::MultiplierFactory<ValueType>().create(env, _transitionMatrix);
                     _x1IsCurrent = false;
+                    _minimizerStates = _optimizationDirection == OptimizationDirection::Maximize ? _statesOfCoalition : ~_statesOfCoalition;
                 }
 
                 template <typename ValueType>
@@ -77,29 +78,69 @@ namespace storm {
 
                 template <typename ValueType>
                 void SoundGameViHelper<ValueType>::performIterationStep(Environment const& env, storm::solver::OptimizationDirection const dir, std::vector<uint64_t>* choices) {
+                    storm::storage::BitVector reducedMinimizerActions = {storm::storage::BitVector(this->_transitionMatrix.getRowCount(), true)};
+
                     // under approximation
                     if (!_multiplier) {
                         prepareSolversAndMultipliers(env);
                     }
                     _x1IsCurrent = !_x1IsCurrent;
 
-                    if (choices == nullptr) {
-                        _multiplier->multiplyAndReduce(env, dir, xOldL(), nullptr, xNewL(), nullptr, &_statesOfCoalition);
-                    } else {
-                        _multiplier->multiplyAndReduce(env, dir, xOldL(), nullptr, xNewL(), choices, &_statesOfCoalition);
-                    }
+                    std::vector<ValueType> choiceValues = xNewL();
+                    choiceValues.resize(this->_transitionMatrix.getRowCount());
+
+                    _multiplier->multiply(env, xOldL(), nullptr, choiceValues);
+                    reduceChoiceValues(choiceValues, &reducedMinimizerActions);
+                    xNewL() = choiceValues;
 
                     // over_approximation
 
-                    if (choices == nullptr) {
-                        _multiplier->multiplyAndReduce(env, dir, xOldU(), nullptr, xNewU(), nullptr, &_statesOfCoalition);
-                    } else {
-                        _multiplier->multiplyAndReduce(env, dir, xOldU(), nullptr, xNewU(), choices, &_statesOfCoalition);
-                    }
+                    _multiplier->multiplyAndReduce(env, dir, xOldU(), nullptr, xNewU(), nullptr, &_statesOfCoalition);
 
                     // TODO Fabian: find_MSECs() & deflate()
-
                 }
+
+                template <typename ValueType>
+                void SoundGameViHelper<ValueType>::reduceChoiceValues(std::vector<ValueType>& choiceValues, storm::storage::BitVector* result)
+                {
+                    // result BitVec should be initialized with 1s outside the function
+                    // restrict rows
+
+                    auto rowGroupIndices = this->_transitionMatrix.getRowGroupIndices();
+                    auto choice_it = choiceValues.begin();
+
+                    STORM_LOG_DEBUG("MinStates " << _minimizerStates);
+                    STORM_LOG_DEBUG("init choiceVal " << choiceValues);
+
+
+                    for(uint state = 0; state < rowGroupIndices.size() - 1; state++) {
+                        uint rowGroupSize = rowGroupIndices[state + 1] - rowGroupIndices[state];
+                        ValueType optChoice;
+                        if (_minimizerStates[state]) {  // check if current state is minimizer state
+                            // getting the optimal minimizer choice for the given state
+                            optChoice = *std::min_element(choice_it, choice_it + rowGroupSize);
+
+                            for (uint choice = 0; choice < rowGroupSize; choice++, choice_it++) {
+                                if (*choice_it > optChoice) {
+                                    result->set(rowGroupIndices[state] + choice, 0);
+                                }
+                            }
+                            // reducing the xNew() (choiceValues) vector for minimizer states
+                            choiceValues[state] = optChoice;
+                        }
+                        else
+                        {
+                            optChoice = *std::max_element(choice_it, choice_it + rowGroupSize);
+                            // reducing the xNew() (choiceValues) vector for maximizer states
+                            choiceValues[state] = optChoice;
+                            choice_it += rowGroupSize;
+                        }
+                    }
+                    choiceValues.resize(this->_transitionMatrix.getRowGroupCount());
+                    STORM_LOG_DEBUG("reduced BitVec: " << *result);
+                    STORM_LOG_DEBUG("reduced x Vector: " << choiceValues);
+                }
+
 
                 template <typename ValueType>
                 bool SoundGameViHelper<ValueType>::checkConvergence(ValueType threshold) const {

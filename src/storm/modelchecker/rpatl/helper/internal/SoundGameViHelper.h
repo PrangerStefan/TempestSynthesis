@@ -19,7 +19,7 @@ namespace storm {
                 template <typename ValueType>
                 class SoundGameViHelper {
                 public:
-                    SoundGameViHelper(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::BitVector statesOfCoalition);
+                    SoundGameViHelper(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::BitVector statesOfCoalition, OptimizationDirection const& optimizationDirection);
 
                     void prepareSolversAndMultipliers(const Environment& env);
 
@@ -73,6 +73,10 @@ namespace storm {
                      */
                     void performIterationStep(Environment const& env, storm::solver::OptimizationDirection const dir, std::vector<uint64_t>* choices = nullptr);
 
+                    void reduceChoiceValues(std::vector<ValueType>& choiceValues, storm::storage::BitVector* result);
+                    //
+                    // für alle minimizer states -> reduce zu optimal actions
+
                     /*!
                      * Checks whether the curently computed value achieves the desired precision
                      */
@@ -92,6 +96,8 @@ namespace storm {
 
                     bool _x1IsCurrent;
 
+                    storm::storage::BitVector _minimizerStates;
+
                     /*!
                      * @pre before calling this, a computation call should have been performed during which scheduler production was enabled.
                      * @return the produced scheduler of the most recent call.
@@ -108,6 +114,7 @@ namespace storm {
                     storm::storage::BitVector _statesOfCoalition;
                     std::vector<ValueType> _x, _x1L, _x2L, _x1U, _x2U;
                     std::unique_ptr<storm::solver::Multiplier<ValueType>> _multiplier;
+                    OptimizationDirection _optimizationDirection;
 
                     bool _produceScheduler = false;
                     bool _shieldingTask = false;

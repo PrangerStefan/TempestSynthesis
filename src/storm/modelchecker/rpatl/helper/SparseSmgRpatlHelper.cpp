@@ -63,7 +63,7 @@ namespace storm {
             template<typename ValueType>
             SMGSparseModelCheckingHelperReturnType<ValueType> SparseSmgRpatlHelper<ValueType>::computeUntilProbabilitiesSound(Environment const& env, storm::solver::SolveGoal<ValueType>&& goal, storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::SparseMatrix<ValueType> const& backwardTransitions, storm::storage::BitVector const& phiStates, storm::storage::BitVector const& psiStates, bool qualitative, storm::storage::BitVector statesOfCoalition, bool produceScheduler, ModelCheckerHint const& hint) {
 
-                storm::modelchecker::helper::internal::SoundGameViHelper<ValueType> viHelper(transitionMatrix, statesOfCoalition);
+                storm::modelchecker::helper::internal::SoundGameViHelper<ValueType> viHelper(transitionMatrix, statesOfCoalition, goal.direction());
 
                 // Initialize the x vector and solution vector result.
                 // TODO Fabian: maybe relevant states (later)
@@ -73,7 +73,7 @@ namespace storm {
                 assert(xL.size() == psiStates.size());
                 for (size_t i = 0; i < xL.size(); i++)
                 {
-                    if (psiStates[xL.size() - i])
+                    if (psiStates[i])
                         xL[i] = 1;
                 }
                 STORM_LOG_DEBUG("xL " << xL);
@@ -81,7 +81,7 @@ namespace storm {
                 storm::storage::BitVector probGreater0 = storm::utility::graph::performProbGreater0(backwardTransitions, phiStates, psiStates);
                 // assigning 1s to the xU vector for all states except the states s where Prob(sEf) = 0 for all goal states f
                 assert(xU.size() == probGreater0.size());
-                for (size_t i = 0; i < xL.size(); i++)
+                for (size_t i = 0; i < xL.size(); i++) // TODO Fabian: do this more efficient
                 {
                     if (probGreater0[i])
                         xU[i] = 1;
