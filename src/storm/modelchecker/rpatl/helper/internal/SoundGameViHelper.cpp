@@ -14,7 +14,7 @@ namespace storm {
             namespace internal {
 
                 template <typename ValueType>
-                SoundGameViHelper<ValueType>::SoundGameViHelper(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::SparseMatrix<ValueType> const& backwardTransitions, storm::storage::BitVector statesOfCoalition, OptimizationDirection const& optimizationDirection) : _transitionMatrix(transitionMatrix), _backwardTransitions(backwardTransitions), _statesOfCoalition(statesOfCoalition), _optimizationDirection(optimizationDirection) {
+                SoundGameViHelper<ValueType>::SoundGameViHelper(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::SparseMatrix<ValueType> const& backwardTransitions, storm::storage::BitVector statesOfCoalition, storm::storage::BitVector psiStates, OptimizationDirection const& optimizationDirection) : _transitionMatrix(transitionMatrix), _backwardTransitions(backwardTransitions), _statesOfCoalition(statesOfCoalition), _psiStates(psiStates), _optimizationDirection(optimizationDirection) {
                     // Intentionally left empty.
                 }
 
@@ -98,40 +98,47 @@ namespace storm {
 
                     // restricting the none optimal minimizer choices
                     storage::SparseMatrix<ValueType> restrictedTransMatrix = this->_transitionMatrix.restrictRows(reducedMinimizerActions);
+                    _multiplierRestricted = storm::solver::MultiplierFactory<ValueType>().create(env, restrictedTransMatrix);
 
-                   // storage::SparseMatrix<ValueType> restrictedBackMatrix = this->_backwardTransitions.restrictRows(reducedMinimizerActions);
-                    STORM_LOG_DEBUG("restricted Transition: \n" << restrictedTransMatrix);
+                    // storage::SparseMatrix<ValueType> restrictedBackMatrix = this->_backwardTransitions.restrictRows(reducedMinimizerActions);
+                    // STORM_LOG_DEBUG("restricted Transition: \n" << restrictedTransMatrix);
 
-                    // TODO Fabian: find_MSECs() & deflate()
+                    // find_MSECs() & deflate()
                     storm::storage::MaximalEndComponentDecomposition<ValueType> MECD = storm::storage::MaximalEndComponentDecomposition<ValueType>(restrictedTransMatrix, _backwardTransitions);
 
-                    STORM_LOG_DEBUG("MECD: \n" << MECD);
-                    // deflate(MECD,restrictedTransMatrix, xNewU());
+                    // STORM_LOG_DEBUG("MECD: \n" << MECD);
+                    deflate(MECD,restrictedTransMatrix, xNewU());
                 }
 
                 template <typename ValueType>
-                void SoundGameViHelper<ValueType>::deflate(storm::storage::MaximalEndComponentDecomposition<ValueType> const MECD, storage::SparseMatrix<ValueType> const restrictedMatrix, std::vector<ValueType>& xU)
-                {
-                 /*   auto rowGroupIndices = restrictedMatrix.getRowGroupIndices();
-                    auto mec_it = MECD.begin();
+                void SoundGameViHelper<ValueType>::deflate(storm::storage::MaximalEndComponentDecomposition<ValueType> const MECD, storage::SparseMatrix<ValueType> const restrictedMatrix,  std::vector<ValueType>& xU) {
+                    auto rowGroupIndices = restrictedMatrix.getRowGroupIndices();
 
+                    // iterating over all MSECs
+                    for (auto smec_it : MECD) {
+                        ValueType bestExit = 0;
+                        for (uint state = 0; state < rowGroupIndices.size() - 1; state++) {
+                            uint rowGroupSize = rowGroupIndices[state + 1] - rowGroupIndices[state];
+                            if (!_minimizerStates[state] && smec_it.containsState(state)) {  // check if current state is maximizer state
+                                // getting the optimal minimizer choice for the given state
 
-                    for(uint state = 0; state < rowGroupIndices.size() - 1; state++) {
-                        uint rowGroupSize = rowGroupIndices[state + 1] - rowGroupIndices[state];
-                        ValueType optChoice;
-                        if (!_minimizerStates[state]) {  // check if current state is maximizer state
-                            // getting the optimal minimizer choice for the given state
-                            optChoice = *std::min_element(choice_it, choice_it + rowGroupSize);
-
-                            for (uint choice = 0; choice < rowGroupSize; choice++, choice_it++) {
-                                if (*choice_it > optChoice) {
-                                    result->set(rowGroupIndices[state] + choice, 0);
+                                for (uint choice = 0; choice < rowGroupSize; choice++) {
+                                    if (!smec_it.containsChoice(state, choice + rowGroupIndices[state])) {
+                                        ValueType choiceValue = 0;
+                                        _multiplierRestricted->multiplyRow(choice + rowGroupIndices[state], xU, choiceValue);
+                                        if (choiceValue > bestExit)
+                                            bestExit = choiceValue;
+                                    }
                                 }
                             }
-                            // reducing the xNew() (choiceValues) vector for minimizer states
-                            choiceValues[state] = optChoice;
                         }
-                    } */
+                        auto stateSet = smec_it.getStateSet();
+                        for (auto smec_state : stateSet)
+                        {
+                            if (!_psiStates[smec_state])
+                                xU[smec_state] = std::min(xU[smec_state], bestExit);
+                        }
+                    }
                 }
 
                 template <typename ValueType>
@@ -178,9 +185,9 @@ namespace storm {
                     STORM_LOG_ASSERT(_multiplier, "tried to check for convergence without doing an iteration first.");
                     // Now check whether the currently produced results are precise enough
                     STORM_LOG_ASSERT(threshold > storm::utility::zero<ValueType>(), "Did not expect a non-positive threshold.");
-                    auto x1It = xOldL().begin();
-                    auto x1Ite = xOldL().end();
-                    auto x2It = xNewL().begin();
+                    auto x1It = xNewL().begin();
+                    auto x1Ite = xNewL().end();
+                    auto x2It = xNewU().begin();
                     ValueType maxDiff = (*x2It - *x1It);
                     ValueType minDiff = maxDiff;
                     // The difference between maxDiff and minDiff is zero at this point. Thus, it doesn't make sense to check the threshold now.

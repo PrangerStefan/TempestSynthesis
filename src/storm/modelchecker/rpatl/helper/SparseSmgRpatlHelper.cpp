@@ -63,7 +63,7 @@ namespace storm {
             template<typename ValueType>
             SMGSparseModelCheckingHelperReturnType<ValueType> SparseSmgRpatlHelper<ValueType>::computeUntilProbabilitiesSound(Environment const& env, storm::solver::SolveGoal<ValueType>&& goal, storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::SparseMatrix<ValueType> const& backwardTransitions, storm::storage::BitVector const& phiStates, storm::storage::BitVector const& psiStates, bool qualitative, storm::storage::BitVector statesOfCoalition, bool produceScheduler, ModelCheckerHint const& hint) {
 
-                storm::modelchecker::helper::internal::SoundGameViHelper<ValueType> viHelper(transitionMatrix, backwardTransitions, statesOfCoalition, goal.direction());
+                storm::modelchecker::helper::internal::SoundGameViHelper<ValueType> viHelper(transitionMatrix, backwardTransitions, statesOfCoalition, psiStates, goal.direction());
 
                 // Initialize the x vector and solution vector result.
                 // TODO Fabian: maybe relevant states (later)

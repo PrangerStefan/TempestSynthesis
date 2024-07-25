@@ -20,7 +20,7 @@ namespace storm {
                 template <typename ValueType>
                 class SoundGameViHelper {
                 public:
-                    SoundGameViHelper(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::SparseMatrix<ValueType> const& backwardTransitions, storm::storage::BitVector statesOfCoalition, OptimizationDirection const& optimizationDirection);
+                    SoundGameViHelper(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::SparseMatrix<ValueType> const& backwardTransitions, storm::storage::BitVector statesOfCoalition, storm::storage::BitVector psiStates, OptimizationDirection const& optimizationDirection);
 
                     void prepareSolversAndMultipliers(const Environment& env);
 
@@ -114,8 +114,10 @@ namespace storm {
                     storm::storage::SparseMatrix<ValueType> _transitionMatrix;
                     storm::storage::SparseMatrix<ValueType> _backwardTransitions;
                     storm::storage::BitVector _statesOfCoalition;
+                    storm::storage::BitVector _psiStates;
                     std::vector<ValueType> _x, _x1L, _x2L, _x1U, _x2U;
                     std::unique_ptr<storm::solver::Multiplier<ValueType>> _multiplier;
+                    std::unique_ptr<storm::solver::Multiplier<ValueType>> _multiplierRestricted;
                     OptimizationDirection _optimizationDirection;
 
                     bool _produceScheduler = false;
