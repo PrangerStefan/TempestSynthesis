@@ -28,7 +28,6 @@ namespace storm {
 
                 template <typename ValueType>
                 void SoundGameViHelper<ValueType>::performValueIteration(Environment const& env, std::vector<ValueType>& xL, std::vector<ValueType>& xU, storm::solver::OptimizationDirection const dir, std::vector<ValueType>& constrainedChoiceValues) {
-                    // new pair (x_old, x_new) for over_approximation()
 
                     prepareSolversAndMultipliers(env);
                     // Get precision for convergence check.

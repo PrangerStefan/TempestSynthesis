@@ -64,6 +64,8 @@ namespace storm {
             SMGSparseModelCheckingHelperReturnType<ValueType> SparseSmgRpatlHelper<ValueType>::computeUntilProbabilitiesSound(Environment const& env, storm::solver::SolveGoal<ValueType>&& goal, storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::SparseMatrix<ValueType> const& backwardTransitions, storm::storage::BitVector const& phiStates, storm::storage::BitVector const& psiStates, bool qualitative, storm::storage::BitVector statesOfCoalition, bool produceScheduler, ModelCheckerHint const& hint) {
 
                 storm::modelchecker::helper::internal::SoundGameViHelper<ValueType> viHelper(transitionMatrix, backwardTransitions, statesOfCoalition, psiStates, goal.direction());
+                std::unique_ptr<storm::storage::Scheduler<ValueType>> scheduler;
+                storm::storage::BitVector relevantStates(psiStates.size(), true);
 
                 // Initialize the x vector and solution vector result.
                 // TODO Fabian: maybe relevant states (later)
@@ -93,6 +95,7 @@ namespace storm {
                 std::vector<ValueType> constrainedChoiceValues;
 
                 viHelper.performValueIteration(env, xL, xU, goal.direction(), constrainedChoiceValues);
+                return SMGSparseModelCheckingHelperReturnType<ValueType>(std::move(xU), std::move(relevantStates), std::move(scheduler), std::move(constrainedChoiceValues));
 
                 assert(false);
             }
