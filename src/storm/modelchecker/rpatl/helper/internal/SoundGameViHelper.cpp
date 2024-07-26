@@ -80,6 +80,7 @@ namespace storm {
                     storm::storage::BitVector reducedMinimizerActions = {storm::storage::BitVector(this->_transitionMatrix.getRowCount(), true)};
 
                     // under approximation
+
                     if (!_multiplier) {
                         prepareSolversAndMultipliers(env);
                     }
@@ -100,28 +101,26 @@ namespace storm {
                     storage::SparseMatrix<ValueType> restrictedTransMatrix = this->_transitionMatrix.restrictRows(reducedMinimizerActions);
                     _multiplierRestricted = storm::solver::MultiplierFactory<ValueType>().create(env, restrictedTransMatrix);
 
-                    // storage::SparseMatrix<ValueType> restrictedBackMatrix = this->_backwardTransitions.restrictRows(reducedMinimizerActions);
                     // STORM_LOG_DEBUG("restricted Transition: \n" << restrictedTransMatrix);
 
                     // find_MSECs() & deflate()
-                    storm::storage::MaximalEndComponentDecomposition<ValueType> MECD = storm::storage::MaximalEndComponentDecomposition<ValueType>(restrictedTransMatrix, _backwardTransitions);
+                    storm::storage::MaximalEndComponentDecomposition<ValueType> MSEC = storm::storage::MaximalEndComponentDecomposition<ValueType>(restrictedTransMatrix, _backwardTransitions);
 
                     // STORM_LOG_DEBUG("MECD: \n" << MECD);
-                    deflate(MECD,restrictedTransMatrix, xNewU());
+                    deflate(MSEC,restrictedTransMatrix, xNewU());
                 }
 
                 template <typename ValueType>
-                void SoundGameViHelper<ValueType>::deflate(storm::storage::MaximalEndComponentDecomposition<ValueType> const MECD, storage::SparseMatrix<ValueType> const restrictedMatrix,  std::vector<ValueType>& xU) {
+                void SoundGameViHelper<ValueType>::deflate(storm::storage::MaximalEndComponentDecomposition<ValueType> const MSEC, storage::SparseMatrix<ValueType> const restrictedMatrix,  std::vector<ValueType>& xU) {
                     auto rowGroupIndices = restrictedMatrix.getRowGroupIndices();
 
                     // iterating over all MSECs
-                    for (auto smec_it : MECD) {
+                    for (auto smec_it : MSEC) {
                         ValueType bestExit = 0;
-                        for (uint state = 0; state < rowGroupIndices.size() - 1; state++) {
+                        auto stateSet = smec_it.getStateSet();
+                        for (uint state : stateSet) {
                             uint rowGroupSize = rowGroupIndices[state + 1] - rowGroupIndices[state];
-                            if (!_minimizerStates[state] && smec_it.containsState(state)) {  // check if current state is maximizer state
-                                // getting the optimal minimizer choice for the given state
-
+                            if (!_minimizerStates[state]) {                                           // check if current state is maximizer state
                                 for (uint choice = 0; choice < rowGroupSize; choice++) {
                                     if (!smec_it.containsChoice(state, choice + rowGroupIndices[state])) {
                                         ValueType choiceValue = 0;
@@ -132,11 +131,10 @@ namespace storm {
                                 }
                             }
                         }
-                        auto stateSet = smec_it.getStateSet();
-                        for (auto smec_state : stateSet)
-                        {
-                            if (!_psiStates[smec_state])
-                                xU[smec_state] = std::min(xU[smec_state], bestExit);
+                        // deflating the states of the current MSEC
+                        for (uint state : stateSet) {
+                            if (!_psiStates[state])
+                                xU[state] = std::min(xU[state], bestExit);
                         }
                     }
                 }
@@ -148,10 +146,6 @@ namespace storm {
 
                     auto rowGroupIndices = this->_transitionMatrix.getRowGroupIndices();
                     auto choice_it = choiceValues.begin();
-
-                    STORM_LOG_DEBUG("MinStates " << _minimizerStates);
-                    STORM_LOG_DEBUG("init choiceVal " << choiceValues);
-
 
                     for(uint state = 0; state < rowGroupIndices.size() - 1; state++) {
                         uint rowGroupSize = rowGroupIndices[state + 1] - rowGroupIndices[state];
