@@ -84,62 +84,82 @@ namespace storm {
                         prepareSolversAndMultipliers(env);
                     }
                     _x1IsCurrent = !_x1IsCurrent;
+                    std::vector<ValueType> choiceValuesL = std::vector<ValueType>(this->_transitionMatrix.getRowCount(), storm::utility::zero<ValueType>());
 
-                    std::vector<ValueType> choiceValues = xNewL();
-                    choiceValues.resize(this->_transitionMatrix.getRowCount());
-
-                    _multiplier->multiply(env, xOldL(), nullptr, choiceValues);
-                    reduceChoiceValues(choiceValues, &reducedMinimizerActions);
-                    xNewL() = choiceValues;
+                    _multiplier->multiply(env, xOldL(), nullptr, choiceValuesL);
+                    reduceChoiceValues(choiceValuesL, &reducedMinimizerActions, xNewL());
 
                     // over_approximation
 
-                    _multiplier->multiplyAndReduce(env, dir, xOldU(), nullptr, xNewU(), nullptr, &_statesOfCoalition);
+                    std::vector<ValueType> choiceValuesU = std::vector<ValueType>(this->_transitionMatrix.getRowCount(), storm::utility::zero<ValueType>());
+
+                    _multiplier->multiply(env, xOldU(), nullptr, choiceValuesU);
+                    reduceChoiceValues(choiceValuesU, nullptr, xNewU());
+
+                    //_multiplier->multiplyAndReduce(env, dir, xOldU(), nullptr, xNewU(), nullptr, &_statesOfCoalition);
 
                     // restricting the none optimal minimizer choices
                     storage::SparseMatrix<ValueType> restrictedTransMatrix = this->_transitionMatrix.restrictRows(reducedMinimizerActions);
-                    _multiplierRestricted = storm::solver::MultiplierFactory<ValueType>().create(env, restrictedTransMatrix);
 
                     // STORM_LOG_DEBUG("restricted Transition: \n" << restrictedTransMatrix);
 
-                    // find_MSECs() & deflate()
+                    // find_MSECs()
                     storm::storage::MaximalEndComponentDecomposition<ValueType> MSEC = storm::storage::MaximalEndComponentDecomposition<ValueType>(restrictedTransMatrix, _backwardTransitions);
 
-                    // STORM_LOG_DEBUG("MECD: \n" << MECD);
-                    deflate(MSEC,restrictedTransMatrix, xNewU());
+                    // STORM_LOG_DEBUG("MECD: \n" << MSEC);
+
+                    // reducing the choiceValuesU
+                    size_t i = 0;
+                    auto new_end = std::remove_if(choiceValuesU.begin(), choiceValuesU.end(), [&reducedMinimizerActions, &i](const auto& item) {
+                        bool ret = !(reducedMinimizerActions[i]);
+                        i++;
+                        return ret;
+                    });
+                    choiceValuesU.erase(new_end, choiceValuesU.end());
+
+                    // deflating the MSECs
+                    deflate(MSEC, restrictedTransMatrix, xNewU(), choiceValuesU);
                 }
 
                 template <typename ValueType>
-                void SoundGameViHelper<ValueType>::deflate(storm::storage::MaximalEndComponentDecomposition<ValueType> const MSEC, storage::SparseMatrix<ValueType> const restrictedMatrix,  std::vector<ValueType>& xU) {
+                void SoundGameViHelper<ValueType>::deflate(storm::storage::MaximalEndComponentDecomposition<ValueType> const MSEC, storage::SparseMatrix<ValueType> const restrictedMatrix,  std::vector<ValueType>& xU, std::vector<ValueType> choiceValues) {
                     auto rowGroupIndices = restrictedMatrix.getRowGroupIndices();
 
+                    auto choice_begin = choiceValues.begin();
                     // iterating over all MSECs
                     for (auto smec_it : MSEC) {
                         ValueType bestExit = 0;
+                        if (smec_it.isErgodic(restrictedMatrix)) continue; // TODO Fabian: ?? isErgodic undefined ref
                         auto stateSet = smec_it.getStateSet();
                         for (uint state : stateSet) {
-                            uint rowGroupSize = rowGroupIndices[state + 1] - rowGroupIndices[state];
-                            if (!_minimizerStates[state]) {                                           // check if current state is maximizer state
-                                for (uint choice = 0; choice < rowGroupSize; choice++) {
-                                    if (!smec_it.containsChoice(state, choice + rowGroupIndices[state])) {
-                                        ValueType choiceValue = 0;
-                                        _multiplierRestricted->multiplyRow(choice + rowGroupIndices[state], xU, choiceValue);
-                                        if (choiceValue > bestExit)
-                                            bestExit = choiceValue;
-                                    }
-                                }
-                            }
+                            if (_minimizerStates[state]) continue;
+                            uint rowGroupIndex = rowGroupIndices[state];
+                            auto exitingCompare = [&state, &smec_it, &choice_begin](const ValueType &lhs, const ValueType &rhs)
+                            {
+                                bool lhsExiting = !smec_it.containsChoice(state, (&lhs - &(*choice_begin)));
+                                bool rhsExiting = !smec_it.containsChoice(state, (&rhs - &(*choice_begin)));
+                                if( lhsExiting && !rhsExiting) return false;
+                                if(!lhsExiting &&  rhsExiting) return true;
+                                if(!lhsExiting && !rhsExiting) return false;
+                                return lhs < rhs;
+                            };
+                            uint rowGroupSize = rowGroupIndices[state + 1] - rowGroupIndex;
+
+                            auto choice_it = choice_begin + rowGroupIndex;
+                            ValueType newBestExit = *std::max_element(choice_it, choice_it + rowGroupSize, exitingCompare);
+                            if (newBestExit > bestExit)
+                                bestExit = newBestExit;
                         }
                         // deflating the states of the current MSEC
                         for (uint state : stateSet) {
-                            if (!_psiStates[state])
-                                xU[state] = std::min(xU[state], bestExit);
+                            if (_psiStates[state]) continue;
+                            xU[state] = std::min(xU[state], bestExit);
                         }
                     }
                 }
 
                 template <typename ValueType>
-                void SoundGameViHelper<ValueType>::reduceChoiceValues(std::vector<ValueType>& choiceValues, storm::storage::BitVector* result)
+                void SoundGameViHelper<ValueType>::reduceChoiceValues(std::vector<ValueType>& choiceValues, storm::storage::BitVector* result, std::vector<ValueType>& x)
                 {
                     // result BitVec should be initialized with 1s outside the method
 
@@ -153,23 +173,26 @@ namespace storm {
                             // getting the optimal minimizer choice for the given state
                             optChoice = *std::min_element(choice_it, choice_it + rowGroupSize);
 
-                            for (uint choice = 0; choice < rowGroupSize; choice++, choice_it++) {
-                                if (*choice_it > optChoice) {
-                                    result->set(rowGroupIndices[state] + choice, 0);
+                            if (result != nullptr) {
+                                for (uint choice = 0; choice < rowGroupSize; choice++, choice_it++) {
+                                    if (*choice_it > optChoice) {
+                                        result->set(rowGroupIndices[state] + choice, 0);
+                                    }
                                 }
                             }
-                            // reducing the xNew() (choiceValues) vector for minimizer states
-                            choiceValues[state] = optChoice;
+                            else
+                                choice_it += rowGroupSize;
+                            // reducing the xNew() vector for minimizer states
+                            x[state] = optChoice;
                         }
                         else
                         {
                             optChoice = *std::max_element(choice_it, choice_it + rowGroupSize);
-                            // reducing the xNew() (choiceValues) vector for maximizer states
-                            choiceValues[state] = optChoice;
+                            // reducing the xNew() vector for maximizer states
+                            x[state] = optChoice;
                             choice_it += rowGroupSize;
                         }
                     }
-                    choiceValues.resize(this->_transitionMatrix.getRowGroupCount());
                 }
 
 

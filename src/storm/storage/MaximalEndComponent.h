@@ -5,6 +5,7 @@
 
 #include "storm/storage/sparse/StateType.h"
 #include "storm/storage/BoostTypes.h"
+#include "storm/storage/SparseMatrix.h"
 
 namespace storm {
     namespace storage {
@@ -20,6 +21,7 @@ namespace storm {
             typedef std::unordered_map<uint_fast64_t, set_type> map_type;
             typedef map_type::iterator iterator;
             typedef map_type::const_iterator const_iterator;
+
             
             /*!
              * Creates an empty MEC.
@@ -124,6 +126,15 @@ namespace storm {
              * @return True if the given choice is contained in the MEC.
              */
             bool containsChoice(uint_fast64_t state, uint_fast64_t choice) const;
+
+            /*!
+             * Retrieves wether the MEC is ergodic or not i.e. wether the MEC is exitable or not
+             *
+             * @param transitionMatrix the given transition matrix
+             * @return True if the MEC is ergodic
+             */
+            template<typename ValueType>
+            bool isErgodic(storm::storage::SparseMatrix<ValueType> transitionMatrix) const;
             
             /*!
              * Retrieves the set of states contained in the MEC.

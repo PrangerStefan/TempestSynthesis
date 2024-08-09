@@ -83,11 +83,13 @@ namespace storm {
                 storm::storage::BitVector probGreater0 = storm::utility::graph::performProbGreater0(backwardTransitions, phiStates, psiStates);
                 // assigning 1s to the xU vector for all states except the states s where Prob(sEf) = 0 for all goal states f
                 assert(xU.size() == probGreater0.size());
-                for (size_t i = 0; i < xL.size(); i++) // TODO Fabian: do this more efficient
-                {
-                    if (probGreater0[i])
-                        xU[i] = 1;
-                }
+                auto xU_begin = xU.begin();
+                std::for_each(xU.begin(), xU.end(), [&probGreater0, &xU_begin](ValueType &it)
+                              {
+                                  if (probGreater0[&it - &(*xU_begin)])
+                                      it = 1;
+                              });
+
                 STORM_LOG_DEBUG("xU " << xU);
 
                 std::vector<ValueType> result = std::vector<ValueType>(transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
@@ -95,9 +97,9 @@ namespace storm {
                 std::vector<ValueType> constrainedChoiceValues;
 
                 viHelper.performValueIteration(env, xL, xU, goal.direction(), constrainedChoiceValues);
-                return SMGSparseModelCheckingHelperReturnType<ValueType>(std::move(xU), std::move(relevantStates), std::move(scheduler), std::move(constrainedChoiceValues));
 
-                assert(false);
+                STORM_LOG_DEBUG(xU);
+                return SMGSparseModelCheckingHelperReturnType<ValueType>(std::move(xU), std::move(relevantStates), std::move(scheduler), std::move(constrainedChoiceValues));
             }
 
             template<typename ValueType>
