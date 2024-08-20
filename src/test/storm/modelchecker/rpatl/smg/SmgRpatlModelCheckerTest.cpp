@@ -426,6 +426,73 @@ namespace {
 
         storm::storage::MaximalEndComponentDecomposition<ValueType> MSEC = storm::storage::MaximalEndComponentDecomposition<ValueType>(restrictedTransMatrix, backwardTransitions);
 
+        // testing MSEC
+        // =====================================================
+        ASSERT_TRUE(MSEC.size() == 3);
+        storm::storage::MaximalEndComponent const& mec1 = MSEC[0];
+        if (mec1.containsState(0)) {
+            ASSERT_TRUE(mec1.containsState(1));
+            ASSERT_FALSE(mec1.containsState(2));
+            ASSERT_FALSE(mec1.containsState(3));
+        }
+        else if (mec1.containsState(2)) {
+            ASSERT_FALSE(mec1.containsState(0));
+            ASSERT_FALSE(mec1.containsState(1));
+            ASSERT_FALSE(mec1.containsState(3));
+        }
+        else if (mec1.containsState(3)) {
+            ASSERT_FALSE(mec1.containsState(0));
+            ASSERT_FALSE(mec1.containsState(1));
+            ASSERT_FALSE(mec1.containsState(2));
+        }
+        else {
+            // This case must never happen
+            ASSERT_TRUE(false);
+        }
+
+        storm::storage::MaximalEndComponent const& mec2 = MSEC[1];
+        if (mec2.containsState(0)) {
+            ASSERT_TRUE(mec2.containsState(1));
+            ASSERT_FALSE(mec2.containsState(2));
+            ASSERT_FALSE(mec2.containsState(3));
+        }
+        else if (mec2.containsState(2)) {
+            ASSERT_FALSE(mec2.containsState(0));
+            ASSERT_FALSE(mec2.containsState(1));
+            ASSERT_FALSE(mec2.containsState(3));
+        }
+        else if (mec2.containsState(3)) {
+            ASSERT_FALSE(mec2.containsState(0));
+            ASSERT_FALSE(mec2.containsState(1));
+            ASSERT_FALSE(mec2.containsState(2));
+        }
+        else {
+            // This case must never happen
+            ASSERT_TRUE(false);
+        }
+
+        storm::storage::MaximalEndComponent const& mec3 = MSEC[2];
+        if (mec3.containsState(0)) {
+            ASSERT_TRUE(mec3.containsState(1));
+            ASSERT_FALSE(mec3.containsState(2));
+            ASSERT_FALSE(mec3.containsState(3));
+        }
+        else if (mec3.containsState(2)) {
+            ASSERT_FALSE(mec3.containsState(0));
+            ASSERT_FALSE(mec3.containsState(1));
+            ASSERT_FALSE(mec3.containsState(3));
+        }
+        else if (mec3.containsState(3)) {
+            ASSERT_FALSE(mec3.containsState(0));
+            ASSERT_FALSE(mec3.containsState(1));
+            ASSERT_FALSE(mec3.containsState(2));
+        }
+        else {
+            // This case must never happen
+            ASSERT_TRUE(false);
+        }
+        // =====================================================
+
         // reducing the choiceValuesU
         size_t i = 0;
         auto new_end = std::remove_if(choiceValuesU.begin(), choiceValuesU.end(), [&reducedMinimizerActions, &i](const auto& item) {
@@ -470,6 +537,73 @@ namespace {
         restrictedTransMatrix = transitionMatrix.restrictRows(reducedMinimizerActions);
 
         MSEC = storm::storage::MaximalEndComponentDecomposition<ValueType>(restrictedTransMatrix, backwardTransitions);
+
+        // testing MSEC
+        // =====================================================
+        ASSERT_TRUE(MSEC.size() == 3);
+        storm::storage::MaximalEndComponent const& mec4 = MSEC[0];
+        if (mec4.containsState(0)) {
+            ASSERT_TRUE(mec4.containsState(1));
+            ASSERT_FALSE(mec4.containsState(2));
+            ASSERT_FALSE(mec4.containsState(3));
+        }
+        else if (mec4.containsState(2)) {
+            ASSERT_FALSE(mec4.containsState(0));
+            ASSERT_FALSE(mec4.containsState(1));
+            ASSERT_FALSE(mec4.containsState(3));
+        }
+        else if (mec4.containsState(3)) {
+            ASSERT_FALSE(mec4.containsState(0));
+            ASSERT_FALSE(mec4.containsState(1));
+            ASSERT_FALSE(mec4.containsState(2));
+        }
+        else {
+            // This case must never happen
+            ASSERT_TRUE(false);
+        }
+
+        storm::storage::MaximalEndComponent const& mec5 = MSEC[1];
+        if (mec5.containsState(0)) {
+            ASSERT_TRUE(mec5.containsState(1));
+            ASSERT_FALSE(mec5.containsState(2));
+            ASSERT_FALSE(mec5.containsState(3));
+        }
+        else if (mec5.containsState(2)) {
+            ASSERT_FALSE(mec5.containsState(0));
+            ASSERT_FALSE(mec5.containsState(1));
+            ASSERT_FALSE(mec5.containsState(3));
+        }
+        else if (mec5.containsState(3)) {
+            ASSERT_FALSE(mec5.containsState(0));
+            ASSERT_FALSE(mec5.containsState(1));
+            ASSERT_FALSE(mec5.containsState(2));
+        }
+        else {
+            // This case must never happen
+            ASSERT_TRUE(false);
+        }
+
+        storm::storage::MaximalEndComponent const& mec6 = MSEC[2];
+        if (mec6.containsState(0)) {
+            ASSERT_TRUE(mec6.containsState(1));
+            ASSERT_FALSE(mec6.containsState(2));
+            ASSERT_FALSE(mec6.containsState(3));
+        }
+        else if (mec6.containsState(2)) {
+            ASSERT_FALSE(mec6.containsState(0));
+            ASSERT_FALSE(mec6.containsState(1));
+            ASSERT_FALSE(mec6.containsState(3));
+        }
+        else if (mec6.containsState(3)) {
+            ASSERT_FALSE(mec6.containsState(0));
+            ASSERT_FALSE(mec6.containsState(1));
+            ASSERT_FALSE(mec6.containsState(2));
+        }
+        else {
+            // This case must never happen
+            ASSERT_TRUE(false);
+        }
+        // =====================================================
 
         // reducing the choiceValuesU
         i = 0;
