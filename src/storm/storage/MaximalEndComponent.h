@@ -128,7 +128,7 @@ namespace storm {
             bool containsChoice(uint_fast64_t state, uint_fast64_t choice) const;
 
             /*!
-             * Retrieves wether the MEC is ergodic or not i.e. wether the MEC is exitable or not
+             * Retrieves whether the MEC is ergodic or not i.e. wether the MEC is exitable or not
              *
              * @param transitionMatrix the given transition matrix
              * @return True if the MEC is ergodic

@@ -96,8 +96,6 @@ namespace storm {
                     _multiplier->multiply(env, xOldU(), nullptr, choiceValuesU);
                     reduceChoiceValues(choiceValuesU, nullptr, xNewU());
 
-                    //_multiplier->multiplyAndReduce(env, dir, xOldU(), nullptr, xNewU(), nullptr, &_statesOfCoalition);
-
                     // restricting the none optimal minimizer choices
                     storage::SparseMatrix<ValueType> restrictedTransMatrix = this->_transitionMatrix.restrictRows(reducedMinimizerActions);
 
@@ -124,12 +122,11 @@ namespace storm {
                 template <typename ValueType>
                 void SoundGameViHelper<ValueType>::deflate(storm::storage::MaximalEndComponentDecomposition<ValueType> const MSEC, storage::SparseMatrix<ValueType> const restrictedMatrix,  std::vector<ValueType>& xU, std::vector<ValueType> choiceValues) {
                     auto rowGroupIndices = restrictedMatrix.getRowGroupIndices();
-
                     auto choice_begin = choiceValues.begin();
                     // iterating over all MSECs
                     for (auto smec_it : MSEC) {
                         ValueType bestExit = 0;
-                        if (smec_it.isErgodic(restrictedMatrix)) continue; // TODO Fabian: ?? isErgodic undefined ref
+                        if (smec_it.isErgodic(restrictedMatrix)) continue;
                         auto stateSet = smec_it.getStateSet();
                         for (uint state : stateSet) {
                             if (_minimizerStates[state]) continue;

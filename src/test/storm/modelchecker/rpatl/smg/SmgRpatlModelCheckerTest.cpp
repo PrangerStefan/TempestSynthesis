@@ -17,6 +17,11 @@
 #include "storm/settings/modules/CoreSettings.h"
 #include "storm/logic/Formulas.h"
 #include "storm/exceptions/UncheckedRequirementException.h"
+#include "storm/solver/Multiplier.h"
+#include "storm/storage/SparseMatrix.h"
+#include "storm/utility/graph.h"
+#include "storm/storage/MaximalEndComponentDecomposition.h"
+#include "storm/modelchecker/rpatl/helper/internal/SoundGameViHelper.h"
 
 namespace {
 
@@ -114,6 +119,7 @@ namespace {
         std::vector<storm::modelchecker::CheckTask<storm::logic::Formula, ValueType>> getTasks(std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas) const {
             std::vector<storm::modelchecker::CheckTask<storm::logic::Formula, ValueType>> result;
             for (auto const& f : formulas) {
+                std::cout << *f << std::endl;
                 result.emplace_back(*f);
             }
             return result;
@@ -343,6 +349,153 @@ namespace {
         EXPECT_NEAR(this->parseNumber("0.975"), this->getQuantitativeResultAtInitialState(model, result), this->precision());
         result = checker->check(this->env(), tasks[8]);
         EXPECT_NEAR(this->parseNumber("1"), this->getQuantitativeResultAtInitialState(model, result), this->precision());
+    }
+
+    TYPED_TEST(SmgRpatlModelCheckerTest, Deflate) {
+        typedef double ValueType;
+        std::string formulasString = " <<maxP>> Pmax=? [F (s=2)]";
+
+        auto modelFormulas = this->buildModelFormulas(STORM_TEST_RESOURCES_DIR "/smg/example_smg.nm", formulasString);
+        auto model = std::move(modelFormulas.first);
+        auto tasks = this->getTasks(modelFormulas.second);
+        auto checker = this->createModelChecker(model);
+        std::unique_ptr<storm::modelchecker::CheckResult> result;
+        auto transitionMatrix = model->getTransitionMatrix();
+
+
+        auto formulas = std::move(modelFormulas.second);
+
+        storm::logic::GameFormula const& gameFormula = formulas[0]->asGameFormula();
+
+        storm::modelchecker::CheckTask<storm::logic::GameFormula, ValueType> checkTask(gameFormula);
+
+        storm::storage::BitVector statesOfCoalition = model->computeStatesOfCoalition(gameFormula.getCoalition());
+        statesOfCoalition.complement();
+
+        // TODO Fabian: get optimization direction
+
+        storm::storage::BitVector psiStates = checker->check(this->env(), gameFormula.getSubformula().asProbabilityOperatorFormula().getSubformula().asEventuallyFormula().getSubformula().asStateFormula())->asExplicitQualitativeCheckResult().getTruthValuesVector();
+        storm::storage::BitVector phiStates(model->getNumberOfStates(), true);
+
+        storm::storage::SparseMatrix<ValueType> backwardTransitions = model->getBackwardTransitions();
+        storm::OptimizationDirection optimizationDirection = storm::OptimizationDirection::Maximize;
+        auto minimizerStates = optimizationDirection == storm::OptimizationDirection::Maximize ? statesOfCoalition : ~statesOfCoalition;
+
+        storm::modelchecker::helper::internal::SoundGameViHelper<ValueType> viHelper(transitionMatrix, backwardTransitions, statesOfCoalition, psiStates, optimizationDirection);
+        viHelper.prepareSolversAndMultipliers(this->env());
+
+        std::vector<ValueType> xL = std::vector<ValueType>(transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
+        for (size_t i = 0; i < xL.size(); i++)
+        {
+            if (psiStates[i])
+                xL[i] = 1;
+        }
+
+        std::vector<ValueType> xU = std::vector<ValueType>(transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
+        storm::storage::BitVector probGreater0 = storm::utility::graph::performProbGreater0(backwardTransitions, phiStates, psiStates);
+        auto xU_begin = xU.begin();
+        std::for_each(xU.begin(), xU.end(), [&probGreater0, &xU_begin](ValueType &it)
+                      {
+                          if (probGreater0[&it - &(*xU_begin)])
+                              it = 1;
+                      });
+
+        // performValueIteration
+        std::vector<ValueType> _x1L = xL;
+        std::vector<ValueType> _x2L = _x1L;
+
+        std::vector<ValueType> _x1U = xU;
+        std::vector<ValueType> _x2U = _x1U;
+
+        // perform first iteration step
+        storm::storage::BitVector reducedMinimizerActions = {storm::storage::BitVector(transitionMatrix.getRowCount(), true)};
+        std::vector<ValueType> choiceValuesL = std::vector<ValueType>(transitionMatrix.getRowCount(), storm::utility::zero<ValueType>());
+
+        viHelper._multiplier->multiply(this->env(), _x2L, nullptr, choiceValuesL);
+
+        viHelper.reduceChoiceValues(choiceValuesL, &reducedMinimizerActions, _x1L);
+
+
+        // over approximation
+        std::vector<ValueType> choiceValuesU = std::vector<ValueType>(transitionMatrix.getRowCount(), storm::utility::zero<ValueType>());
+
+        viHelper._multiplier->multiply(this->env(), _x2U, nullptr, choiceValuesU);
+        viHelper.reduceChoiceValues(choiceValuesU, nullptr, _x1U);
+
+        storm::storage::SparseMatrix<ValueType> restrictedTransMatrix = transitionMatrix.restrictRows(reducedMinimizerActions);
+
+        storm::storage::MaximalEndComponentDecomposition<ValueType> MSEC = storm::storage::MaximalEndComponentDecomposition<ValueType>(restrictedTransMatrix, backwardTransitions);
+
+        // reducing the choiceValuesU
+        size_t i = 0;
+        auto new_end = std::remove_if(choiceValuesU.begin(), choiceValuesU.end(), [&reducedMinimizerActions, &i](const auto& item) {
+            bool ret = !(reducedMinimizerActions[i]);
+            i++;
+            return ret;
+        });
+        choiceValuesU.erase(new_end, choiceValuesU.end());
+
+        // deflating the MSECs
+        viHelper.deflate(MSEC, restrictedTransMatrix, _x1U, choiceValuesU);
+
+        xL = _x1L;
+        xU = _x1U;
+
+        EXPECT_NEAR(this->parseNumber("0"), xL[0], this->precision());
+        EXPECT_NEAR(this->parseNumber("0.333333"), xL[1], this->precision());
+        EXPECT_NEAR(this->parseNumber("1"), xL[2], this->precision());
+        EXPECT_NEAR(this->parseNumber("0"), xL[3], this->precision());
+
+        EXPECT_NEAR(this->parseNumber("0.666666"), xU[0], this->precision());
+        EXPECT_NEAR(this->parseNumber("0.666666"), xU[1], this->precision());
+        EXPECT_NEAR(this->parseNumber("1"), xU[2], this->precision());
+        EXPECT_NEAR(this->parseNumber("0"), xU[3], this->precision());
+
+        // second iteration step
+
+        reducedMinimizerActions = {storm::storage::BitVector(transitionMatrix.getRowCount(), true)};
+        choiceValuesL = std::vector<ValueType>(transitionMatrix.getRowCount(), storm::utility::zero<ValueType>());
+
+        viHelper._multiplier->multiply(this->env(), _x1L, nullptr, choiceValuesL);
+
+        viHelper.reduceChoiceValues(choiceValuesL, &reducedMinimizerActions, _x2L);
+
+
+        // over approximation
+        choiceValuesU = std::vector<ValueType>(transitionMatrix.getRowCount(), storm::utility::zero<ValueType>());
+
+        viHelper._multiplier->multiply(this->env(), _x1U, nullptr, choiceValuesU);
+        viHelper.reduceChoiceValues(choiceValuesU, nullptr, _x2U);
+
+        restrictedTransMatrix = transitionMatrix.restrictRows(reducedMinimizerActions);
+
+        MSEC = storm::storage::MaximalEndComponentDecomposition<ValueType>(restrictedTransMatrix, backwardTransitions);
+
+        // reducing the choiceValuesU
+        i = 0;
+        new_end = std::remove_if(choiceValuesU.begin(), choiceValuesU.end(), [&reducedMinimizerActions, &i](const auto& item) {
+            bool ret = !(reducedMinimizerActions[i]);
+            i++;
+            return ret;
+        });
+        choiceValuesU.erase(new_end, choiceValuesU.end());
+
+        // deflating the MSECs
+        viHelper.deflate(MSEC, restrictedTransMatrix, _x2U, choiceValuesU);
+
+        xL = _x2L;
+        xU = _x2U;
+
+        EXPECT_NEAR(this->parseNumber("0.333333"), xL[0], this->precision());
+        EXPECT_NEAR(this->parseNumber("0.444444"), xL[1], this->precision());
+        EXPECT_NEAR(this->parseNumber("1"), xL[2], this->precision());
+        EXPECT_NEAR(this->parseNumber("0"), xL[3], this->precision());
+
+        EXPECT_NEAR(this->parseNumber("0.555555"), xU[0], this->precision());
+        EXPECT_NEAR(this->parseNumber("0.555555"), xU[1], this->precision());
+        EXPECT_NEAR(this->parseNumber("1"), xU[2], this->precision());
+        EXPECT_NEAR(this->parseNumber("0"), xU[3], this->precision());
+
     }
 
     // TODO: create more test cases (files)

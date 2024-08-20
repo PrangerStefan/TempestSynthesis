@@ -68,15 +68,17 @@ namespace storm {
                      */
                     void fillChoiceValuesVector(std::vector<ValueType>& choiceValues, storm::storage::BitVector psiStates, std::vector<storm::storage::SparseMatrix<double>::index_type> rowGroupIndices);
 
+                    void deflate(storm::storage::MaximalEndComponentDecomposition<ValueType> const MECD, storage::SparseMatrix<ValueType> const restrictedMatrix, std::vector<ValueType>& xU, std::vector<ValueType> choiceValues);
+
+                    void reduceChoiceValues(std::vector<ValueType>& choiceValues, storm::storage::BitVector* result, std::vector<ValueType>& x);
+
+                    // multiplier now public for testing
+                    std::unique_ptr<storm::solver::Multiplier<ValueType>> _multiplier;
                 private:
                     /*!
                      * Performs one iteration step for value iteration
                      */
                     void performIterationStep(Environment const& env, storm::solver::OptimizationDirection const dir, std::vector<uint64_t>* choices = nullptr);
-
-                    void deflate(storm::storage::MaximalEndComponentDecomposition<ValueType> const MECD, storage::SparseMatrix<ValueType> const restrictedMatrix, std::vector<ValueType>& xU, std::vector<ValueType> choiceValues);
-
-                    void reduceChoiceValues(std::vector<ValueType>& choiceValues, storm::storage::BitVector* result, std::vector<ValueType>& x);
 
                     /*!
                      * Checks whether the curently computed value achieves the desired precision
@@ -116,7 +118,6 @@ namespace storm {
                     storm::storage::BitVector _statesOfCoalition;
                     storm::storage::BitVector _psiStates;
                     std::vector<ValueType> _x, _x1L, _x2L, _x1U, _x2U;
-                    std::unique_ptr<storm::solver::Multiplier<ValueType>> _multiplier;
                     OptimizationDirection _optimizationDirection;
 
                     bool _produceScheduler = false;
