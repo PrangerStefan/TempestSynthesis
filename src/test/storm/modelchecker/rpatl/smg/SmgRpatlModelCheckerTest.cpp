@@ -119,7 +119,6 @@ namespace {
         std::vector<storm::modelchecker::CheckTask<storm::logic::Formula, ValueType>> getTasks(std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas) const {
             std::vector<storm::modelchecker::CheckTask<storm::logic::Formula, ValueType>> result;
             for (auto const& f : formulas) {
-                std::cout << *f << std::endl;
                 result.emplace_back(*f);
             }
             return result;
@@ -412,7 +411,6 @@ namespace {
         std::vector<ValueType> choiceValuesL = std::vector<ValueType>(transitionMatrix.getRowCount(), storm::utility::zero<ValueType>());
 
         viHelper._multiplier->multiply(this->env(), _x2L, nullptr, choiceValuesL);
-
         viHelper.reduceChoiceValues(choiceValuesL, &reducedMinimizerActions, _x1L);
 
 
@@ -518,13 +516,11 @@ namespace {
         EXPECT_NEAR(this->parseNumber("1"), xU[2], this->precision());
         EXPECT_NEAR(this->parseNumber("0"), xU[3], this->precision());
 
-        // second iteration step
-
+        // perform second iteration step
         reducedMinimizerActions = {storm::storage::BitVector(transitionMatrix.getRowCount(), true)};
         choiceValuesL = std::vector<ValueType>(transitionMatrix.getRowCount(), storm::utility::zero<ValueType>());
 
         viHelper._multiplier->multiply(this->env(), _x1L, nullptr, choiceValuesL);
-
         viHelper.reduceChoiceValues(choiceValuesL, &reducedMinimizerActions, _x2L);
 
 
