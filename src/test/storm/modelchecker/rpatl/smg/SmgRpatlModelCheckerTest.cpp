@@ -361,9 +361,7 @@ namespace {
         std::unique_ptr<storm::modelchecker::CheckResult> result;
         auto transitionMatrix = model->getTransitionMatrix();
 
-
         auto formulas = std::move(modelFormulas.second);
-
         storm::logic::GameFormula const& gameFormula = formulas[0]->asGameFormula();
 
         storm::modelchecker::CheckTask<storm::logic::GameFormula, ValueType> checkTask(gameFormula);
@@ -371,13 +369,12 @@ namespace {
         storm::storage::BitVector statesOfCoalition = model->computeStatesOfCoalition(gameFormula.getCoalition());
         statesOfCoalition.complement();
 
-        // TODO Fabian: get optimization direction
 
         storm::storage::BitVector psiStates = checker->check(this->env(), gameFormula.getSubformula().asProbabilityOperatorFormula().getSubformula().asEventuallyFormula().getSubformula().asStateFormula())->asExplicitQualitativeCheckResult().getTruthValuesVector();
         storm::storage::BitVector phiStates(model->getNumberOfStates(), true);
 
         storm::storage::SparseMatrix<ValueType> backwardTransitions = model->getBackwardTransitions();
-        storm::OptimizationDirection optimizationDirection = storm::OptimizationDirection::Maximize;
+        storm::OptimizationDirection optimizationDirection = gameFormula.getSubformula().asOperatorFormula().getOptimalityType();
         auto minimizerStates = optimizationDirection == storm::OptimizationDirection::Maximize ? statesOfCoalition : ~statesOfCoalition;
 
         storm::modelchecker::helper::internal::SoundGameViHelper<ValueType> viHelper(transitionMatrix, backwardTransitions, statesOfCoalition, psiStates, optimizationDirection);
@@ -506,6 +503,8 @@ namespace {
         xL = _x1L;
         xU = _x1U;
 
+        // testing x vectors
+        // =====================================================
         EXPECT_NEAR(this->parseNumber("0"), xL[0], this->precision());
         EXPECT_NEAR(this->parseNumber("0.333333"), xL[1], this->precision());
         EXPECT_NEAR(this->parseNumber("1"), xL[2], this->precision());
@@ -515,6 +514,7 @@ namespace {
         EXPECT_NEAR(this->parseNumber("0.666666"), xU[1], this->precision());
         EXPECT_NEAR(this->parseNumber("1"), xU[2], this->precision());
         EXPECT_NEAR(this->parseNumber("0"), xU[3], this->precision());
+        // =====================================================
 
         // perform second iteration step
         reducedMinimizerActions = {storm::storage::BitVector(transitionMatrix.getRowCount(), true)};
@@ -616,6 +616,8 @@ namespace {
         xL = _x2L;
         xU = _x2U;
 
+        // testing x vectors
+        // =====================================================
         EXPECT_NEAR(this->parseNumber("0.333333"), xL[0], this->precision());
         EXPECT_NEAR(this->parseNumber("0.444444"), xL[1], this->precision());
         EXPECT_NEAR(this->parseNumber("1"), xL[2], this->precision());
@@ -625,6 +627,7 @@ namespace {
         EXPECT_NEAR(this->parseNumber("0.555555"), xU[1], this->precision());
         EXPECT_NEAR(this->parseNumber("1"), xU[2], this->precision());
         EXPECT_NEAR(this->parseNumber("0"), xU[3], this->precision());
+        // =====================================================
 
     }
 

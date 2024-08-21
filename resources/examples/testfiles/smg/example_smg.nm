@@ -1,3 +1,7 @@
+// taken from Julia Eisentraut "Value iteration for simple stochastic games: Stopping criterion
+//                              and learning algorithm" - Fig. 1
+
+
 smg
 
 const double p = 2/3;
