@@ -14,7 +14,7 @@ namespace storm {
             namespace internal {
 
                 template <typename ValueType>
-                SoundGameViHelper<ValueType>::SoundGameViHelper(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::SparseMatrix<ValueType> const& backwardTransitions, storm::storage::BitVector statesOfCoalition, storm::storage::BitVector psiStates, OptimizationDirection const& optimizationDirection) : _transitionMatrix(transitionMatrix), _backwardTransitions(backwardTransitions), _statesOfCoalition(statesOfCoalition), _psiStates(psiStates), _optimizationDirection(optimizationDirection) {
+                SoundGameViHelper<ValueType>::SoundGameViHelper(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::SparseMatrix<ValueType> const& backwardTransitions, std::vector<ValueType> b, storm::storage::BitVector statesOfCoalition, storm::storage::BitVector psiStates, OptimizationDirection const& optimizationDirection) : _transitionMatrix(transitionMatrix), _backwardTransitions(backwardTransitions), _statesOfCoalition(statesOfCoalition), _psiStates(psiStates), _optimizationDirection(optimizationDirection), _b(b) {
                     // Intentionally left empty.
                 }
 
@@ -24,6 +24,8 @@ namespace storm {
                     _multiplier = storm::solver::MultiplierFactory<ValueType>().create(env, _transitionMatrix);
                     _x1IsCurrent = false;
                     _minimizerStates = _optimizationDirection == OptimizationDirection::Maximize ? _statesOfCoalition : ~_statesOfCoalition;
+                    _oldPolicy = storm::storage::BitVector(_transitionMatrix.getRowCount(), false);
+                    _timing = std::vector<double>(5, 0);
                 }
 
                 template <typename ValueType>
@@ -37,6 +39,8 @@ namespace storm {
                     //_x1.assign(_transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
                     _x1L = xL;
                     _x2L = _x1L;
+                    _x1Test = _x1L;
+                    _x2Test = _x1L;
 
                     _x1U = xU;
                     _x2U = _x1U;
@@ -65,8 +69,8 @@ namespace storm {
                     xL = xNewL();
                     xU = xNewU();
 
-                    STORM_LOG_DEBUG("result xL: " << xL);
-                    STORM_LOG_DEBUG("result xU: " << xU);
+                    // for profiling
+                    STORM_PRINT(_timing[0] << ", " << _timing[1] << ", " << _timing[2] << ", " << _timing[3] << ", " << _timing[4] << std::endl);
 
                     if (isProduceSchedulerSet()) {
                         // We will be doing one more iteration step and track scheduler choices this time.
@@ -79,7 +83,7 @@ namespace storm {
                     storm::storage::BitVector reducedMinimizerActions = {storm::storage::BitVector(this->_transitionMatrix.getRowCount(), true)};
 
                     // under approximation
-
+                    auto start = std::chrono::steady_clock::now();
                     if (!_multiplier) {
                         prepareSolversAndMultipliers(env);
                     }
@@ -89,23 +93,42 @@ namespace storm {
                     _multiplier->multiply(env, xOldL(), nullptr, choiceValuesL);
                     reduceChoiceValues(choiceValuesL, &reducedMinimizerActions, xNewL());
 
-                    // over_approximation
 
+                    // just for debugging
+                    _multiplier->multiplyAndReduce(env, _optimizationDirection, xOldTest(), nullptr, xNewTest(), nullptr, &_statesOfCoalition);
+
+                    // over_approximation
                     std::vector<ValueType> choiceValuesU = std::vector<ValueType>(this->_transitionMatrix.getRowCount(), storm::utility::zero<ValueType>());
 
                     _multiplier->multiply(env, xOldU(), nullptr, choiceValuesU);
                     reduceChoiceValues(choiceValuesU, nullptr, xNewU());
 
-                    // restricting the none optimal minimizer choices
-                    storage::SparseMatrix<ValueType> restrictedTransMatrix = this->_transitionMatrix.restrictRows(reducedMinimizerActions);
+                    auto finish = std::chrono::steady_clock::now();
+                    double elapsed_seconds = std::chrono::duration_cast<
+                                                 std::chrono::duration<double>>(finish - start).count();
+                    _timing[0] += elapsed_seconds;
 
-                    // STORM_LOG_DEBUG("restricted Transition: \n" << restrictedTransMatrix);
+                    if (reducedMinimizerActions != _oldPolicy) { // new MECs only if Policy changed
+                        start = std::chrono::steady_clock::now();
 
-                    // find_MSECs()
-                    storm::storage::MaximalEndComponentDecomposition<ValueType> MSEC = storm::storage::MaximalEndComponentDecomposition<ValueType>(restrictedTransMatrix, _backwardTransitions);
+                        // restricting the none optimal minimizer choices
+                        _restrictedTransitions = this->_transitionMatrix.restrictRows(reducedMinimizerActions);
 
-                    // STORM_LOG_DEBUG("MECD: \n" << MSEC);
+                        finish = std::chrono::steady_clock::now();
+                        elapsed_seconds = std::chrono::duration_cast<std::chrono::duration<double>>(finish - start).count();
+                        _timing[1] += elapsed_seconds;
 
+                        // STORM_LOG_DEBUG("restricted Transition: \n" << restrictedTransMatrix);
+                        start = std::chrono::steady_clock::now();
+                        // find_MSECs()
+                        _MSECs = storm::storage::MaximalEndComponentDecomposition<ValueType>(_restrictedTransitions, _restrictedTransitions.transpose(true));
+
+                        finish = std::chrono::steady_clock::now();
+                        elapsed_seconds = std::chrono::duration_cast<std::chrono::duration<double>>(finish - start).count();
+                        _timing[2] += elapsed_seconds;
+                    }
+
+                    start = std::chrono::steady_clock::now();
                     // reducing the choiceValuesU
                     size_t i = 0;
                     auto new_end = std::remove_if(choiceValuesU.begin(), choiceValuesU.end(), [&reducedMinimizerActions, &i](const auto& item) {
@@ -114,9 +137,19 @@ namespace storm {
                         return ret;
                     });
                     choiceValuesU.erase(new_end, choiceValuesU.end());
+                    finish = std::chrono::steady_clock::now();
+                    elapsed_seconds = std::chrono::duration_cast<
+                                          std::chrono::duration<double>>(finish - start).count();
+                    _timing[3] += elapsed_seconds;
+                    _oldPolicy = reducedMinimizerActions;
 
                     // deflating the MSECs
-                    deflate(MSEC, restrictedTransMatrix, xNewU(), choiceValuesU);
+                    start = std::chrono::steady_clock::now();
+                    deflate(_MSECs, _restrictedTransitions, xNewU(), choiceValuesU);
+                    finish = std::chrono::steady_clock::now();
+                    elapsed_seconds = std::chrono::duration_cast<
+                                          std::chrono::duration<double>>(finish - start).count();
+                    _timing[4] += elapsed_seconds;
                 }
 
                 template <typename ValueType>
@@ -177,8 +210,9 @@ namespace storm {
                                     }
                                 }
                             }
-                            else
+                            else {
                                 choice_it += rowGroupSize;
+                            }
                             // reducing the xNew() vector for minimizer states
                             x[state] = optChoice;
                         }
@@ -201,22 +235,11 @@ namespace storm {
                     auto x1It = xNewL().begin();
                     auto x1Ite = xNewL().end();
                     auto x2It = xNewU().begin();
-                    ValueType maxDiff = (*x2It - *x1It);
-                    ValueType minDiff = maxDiff;
                     // The difference between maxDiff and minDiff is zero at this point. Thus, it doesn't make sense to check the threshold now.
-                    for (++x1It, ++x2It; x1It != x1Ite; ++x1It, ++x2It) {
+                    for (; x1It != x1Ite; x1It++, x2It++) {
                         ValueType diff = (*x2It - *x1It);
                         // Potentially update maxDiff or minDiff
-                        bool skipCheck = false;
-                        if (maxDiff < diff) {
-                            maxDiff = diff;
-                        } else if (minDiff > diff) {
-                            minDiff = diff;
-                        } else {
-                            skipCheck = true;
-                        }
-                        // Check convergence
-                        if (!skipCheck && (maxDiff - minDiff) > threshold) {
+                        if (diff > threshold) {
                             return false;
                         }
                     }
@@ -336,6 +359,16 @@ namespace storm {
                 template <typename ValueType>
                 std::vector<ValueType> const& SoundGameViHelper<ValueType>::xOldU() const {
                     return _x1IsCurrent ? _x2U : _x1U;
+                }
+
+                template <typename ValueType>
+                std::vector<ValueType>& SoundGameViHelper<ValueType>::xOldTest() {
+                    return _x1IsCurrent ? _x2Test : _x1Test;
+                }
+
+                template <typename ValueType>
+                std::vector<ValueType>& SoundGameViHelper<ValueType>::xNewTest() {
+                    return _x1IsCurrent ? _x1Test : _x2Test;
                 }
 
                 template class SoundGameViHelper<double>;

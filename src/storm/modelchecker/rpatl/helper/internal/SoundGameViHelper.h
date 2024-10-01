@@ -20,7 +20,7 @@ namespace storm {
                 template <typename ValueType>
                 class SoundGameViHelper {
                 public:
-                    SoundGameViHelper(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::SparseMatrix<ValueType> const& backwardTransitions, storm::storage::BitVector statesOfCoalition, storm::storage::BitVector psiStates, OptimizationDirection const& optimizationDirection);
+                    SoundGameViHelper(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::SparseMatrix<ValueType> const& backwardTransitions, std::vector<ValueType> b, storm::storage::BitVector statesOfCoalition, storm::storage::BitVector psiStates, OptimizationDirection const& optimizationDirection);
 
                     void prepareSolversAndMultipliers(const Environment& env);
 
@@ -97,6 +97,10 @@ namespace storm {
                     std::vector<ValueType>& xOldU();
                     std::vector<ValueType> const& xOldU() const;
 
+                    std::vector<ValueType>& xNewTest();
+
+                    std::vector<ValueType>& xOldTest();
+
                     bool _x1IsCurrent;
 
                     storm::storage::BitVector _minimizerStates;
@@ -115,14 +119,20 @@ namespace storm {
 
                     storm::storage::SparseMatrix<ValueType> _transitionMatrix;
                     storm::storage::SparseMatrix<ValueType> _backwardTransitions;
+                    storm::storage::SparseMatrix<ValueType> _restrictedTransitions;
+                    storm::storage::BitVector _oldPolicy;
                     storm::storage::BitVector _statesOfCoalition;
                     storm::storage::BitVector _psiStates;
-                    std::vector<ValueType> _x, _x1L, _x2L, _x1U, _x2U;
+                    std::vector<ValueType> _x, _x1L, _x2L, _x1U, _x2U, _x1Test, _x2Test, _b;
                     OptimizationDirection _optimizationDirection;
+
+                    storm::storage::MaximalEndComponentDecomposition<ValueType> _MSECs;
 
                     bool _produceScheduler = false;
                     bool _shieldingTask = false;
                     boost::optional<std::vector<uint64_t>> _producedOptimalChoices;
+
+                    std::vector<double> _timing;
                 };
             }
         }
