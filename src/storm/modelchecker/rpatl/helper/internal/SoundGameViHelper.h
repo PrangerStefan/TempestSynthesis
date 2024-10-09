@@ -97,10 +97,6 @@ namespace storm {
                     std::vector<ValueType>& xOldU();
                     std::vector<ValueType> const& xOldU() const;
 
-                    std::vector<ValueType>& xNewTest();
-
-                    std::vector<ValueType>& xOldTest();
-
                     bool _x1IsCurrent;
 
                     storm::storage::BitVector _minimizerStates;
@@ -123,7 +119,7 @@ namespace storm {
                     storm::storage::BitVector _oldPolicy;
                     storm::storage::BitVector _statesOfCoalition;
                     storm::storage::BitVector _psiStates;
-                    std::vector<ValueType> _x, _x1L, _x2L, _x1U, _x2U, _x1Test, _x2Test, _b;
+                    std::vector<ValueType> _x, _x1L, _x2L, _x1U, _x2U, _b;
                     OptimizationDirection _optimizationDirection;
 
                     storm::storage::MaximalEndComponentDecomposition<ValueType> _MSECs;

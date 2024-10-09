@@ -61,29 +61,30 @@ namespace storm {
 
             template<typename ValueType>
             SMGSparseModelCheckingHelperReturnType<ValueType> SparseSmgRpatlHelper<ValueType>::computeUntilProbabilitiesSound(Environment const& env, storm::solver::SolveGoal<ValueType>&& goal, storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::SparseMatrix<ValueType> const& backwardTransitions, storm::storage::BitVector const& phiStates, storm::storage::BitVector const& psiStates, bool qualitative, storm::storage::BitVector statesOfCoalition, bool produceScheduler, ModelCheckerHint const& hint) {
-                STORM_LOG_DEBUG("statesOfCoalition: " << statesOfCoalition << std::endl);
 
-                storm::storage::BitVector prob1 = storm::utility::graph::performProb1(backwardTransitions, phiStates, psiStates);
                 storm::storage::BitVector probGreater0 = storm::utility::graph::performProbGreater0(backwardTransitions, phiStates, psiStates);
-                STORM_LOG_DEBUG("probGreater0: " << probGreater0 << std::endl);
-
-
-
                 std::unique_ptr<storm::storage::Scheduler<ValueType>> scheduler;
-                storm::storage::BitVector relevantStates = storm::storage::BitVector(transitionMatrix.getRowGroupCount(), true); // TODO Fabian
+                storm::storage::BitVector relevantStates = phiStates;
 
                 storm::storage::SparseMatrix<ValueType> submatrix = transitionMatrix.getSubmatrix(true, relevantStates, relevantStates, false);
 
                 // Initialize the x vector and solution vector result.
-                std::vector<ValueType> xL = std::vector<ValueType>(relevantStates.getNumberOfSetBits(), storm::utility::zero<ValueType>());
+                std::vector<ValueType> xL = std::vector<ValueType>(transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
+                // assigning 1s to the xL vector for all Goal states
                 auto xL_begin = xL.begin();
-                std::for_each(xL.begin(), xL.end(), [&prob1, &xL_begin](ValueType &it)
+                std::for_each(xL.begin(), xL.end(), [&psiStates, &xL_begin](ValueType &it)
                               {
-                                  if (prob1[&it - &(*xL_begin)])
+                                  if (psiStates[&it - &(*xL_begin)])
                                       it = 1;
                               });
-                // std::transform(xL.begin(), xL.end(), psiStates.begin(), xL, [](double& a) { a *= 3; }) // TODO Fabian
-                // assigning 1s to the xL vector for all Goal states
+                size_t i = 0;
+                auto new_end = std::remove_if(xL.begin(), xL.end(), [&relevantStates, &i](const auto& item) {
+                    bool ret = !(relevantStates[i]);
+                    i++;
+                    return ret;
+                });
+                xL.erase(new_end, xL.end());
+                xL.resize(relevantStates.getNumberOfSetBits());
                 std::vector<ValueType> xU = std::vector<ValueType>(transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
                 // assigning 1s to the xU vector for all states except the states s where Prob(sEf) = 0 for all goal states f
                 auto xU_begin = xU.begin();
@@ -92,33 +93,32 @@ namespace storm {
                                   if (probGreater0[&it - &(*xU_begin)])
                                       it = 1;
                               });
-                /*size_t i = 0;
-                auto new_end = std::remove_if(xU.begin(), xU.end(), [&relevantStates, &i](const auto& item) {
+                i = 0;
+                auto new_end_U = std::remove_if(xU.begin(), xU.end(), [&relevantStates, &i](const auto& item) {
                     bool ret = !(relevantStates[i]);
                     i++;
                     return ret;
                 });
-                xU.erase(new_end, xU.end());
-                xU.resize(relevantStates.getNumberOfSetBits()); */
+                xU.erase(new_end_U, xU.end());
+                xU.resize(relevantStates.getNumberOfSetBits());
 
-                std::vector<ValueType> result = std::vector<ValueType>(transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
+                storm::storage::BitVector clippedPsiStates(relevantStates.getNumberOfSetBits());
+                clippedPsiStates.setClippedStatesOfCoalition(relevantStates, psiStates);
+
                 std::vector<ValueType> b = transitionMatrix.getConstrainedRowGroupSumVector(relevantStates, psiStates);
+                std::vector<ValueType> result = std::vector<ValueType>(transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
 
-                // STORM_LOG_DEBUG(transitionMatrix);
-                STORM_LOG_DEBUG("b: " << b);
                 storm::storage::BitVector clippedStatesOfCoalition(relevantStates.getNumberOfSetBits());
                 clippedStatesOfCoalition.setClippedStatesOfCoalition(relevantStates, statesOfCoalition);
-                // std::vector<ValueType> constrainedChoiceValues = std::vector<ValueType>(b.size(), storm::utility::zero<ValueType>()); // TODO Fabian: do I need this?
-                std::vector<ValueType> constrainedChoiceValues;
+                std::vector<ValueType> constrainedChoiceValues = std::vector<ValueType>(b.size(), storm::utility::zero<ValueType>());
 
-                storm::modelchecker::helper::internal::SoundGameViHelper<ValueType> viHelper(transitionMatrix, backwardTransitions, b, statesOfCoalition, psiStates, goal.direction());
+                storm::modelchecker::helper::internal::SoundGameViHelper<ValueType> viHelper(submatrix, submatrix.transpose(), b, clippedStatesOfCoalition, clippedPsiStates, goal.direction());
 
                 viHelper.performValueIteration(env, xL, xU, goal.direction(), constrainedChoiceValues);
 
-                storm::utility::vector::setVectorValues(result, relevantStates, xU);
-                storm::utility::vector::setVectorValues(result, psiStates, storm::utility::one<ValueType>());
+                viHelper.fillChoiceValuesVector(constrainedChoiceValues, relevantStates, transitionMatrix.getRowGroupIndices());
+                storm::utility::vector::setVectorValues(result, relevantStates, xL);
 
-                STORM_LOG_DEBUG(xU);
                 return SMGSparseModelCheckingHelperReturnType<ValueType>(std::move(result), std::move(relevantStates), std::move(scheduler), std::move(constrainedChoiceValues));
             }
 

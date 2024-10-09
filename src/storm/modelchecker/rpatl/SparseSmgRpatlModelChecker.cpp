@@ -154,7 +154,6 @@ namespace storm {
             if (checkTask.isProduceSchedulersSet() && ret.scheduler) {
                 result->asExplicitQuantitativeCheckResult<ValueType>().setScheduler(std::move(ret.scheduler));
             }
-            //STORM_LOG_DEBUG(result);
             return result;
         }
 
