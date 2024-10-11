@@ -114,16 +114,24 @@ namespace storm {
 
                 storm::modelchecker::helper::internal::SoundGameViHelper<ValueType> viHelper(submatrix, submatrix.transpose(), b, clippedStatesOfCoalition, clippedPsiStates, goal.direction());
 
+                if (produceScheduler) {
+                    viHelper.setProduceScheduler(true);
+                }
+
                 viHelper.performValueIteration(env, xL, xU, goal.direction(), constrainedChoiceValues);
 
                 viHelper.fillChoiceValuesVector(constrainedChoiceValues, relevantStates, transitionMatrix.getRowGroupIndices());
                 storm::utility::vector::setVectorValues(result, relevantStates, xL);
 
+                if (produceScheduler) {
+                    scheduler = std::make_unique<storm::storage::Scheduler<ValueType>>(expandScheduler(viHelper.extractScheduler(), psiStates, ~phiStates));
+                }
+
                 return SMGSparseModelCheckingHelperReturnType<ValueType>(std::move(result), std::move(relevantStates), std::move(scheduler), std::move(constrainedChoiceValues));
             }
 
             template<typename ValueType>
-            storm::storage::Scheduler<ValueType> SparseSmgRpatlHelper<ValueType>::expandScheduler(storm::storage::Scheduler<ValueType> scheduler, storm::storage::BitVector psiStates, storm::storage::BitVector notPhiStates) {
+            storm::storage::Scheduler<ValueType> SparseSmgRpatlHelper<ValueType>::expandScheduler(storm::storage::Scheduler<ValueType> scheduler, storm::storage::BitVector psiStates, storm::storage::BitVector notPhiStates, bool sound) {
                 storm::storage::Scheduler<ValueType> completeScheduler(psiStates.size());
                 uint_fast64_t maybeStatesCounter = 0;
                 uint schedulerSize = psiStates.size();
@@ -131,6 +139,9 @@ namespace storm {
                     // psiStates already fulfill formulae so we can set an arbitrary action
                     if(psiStates.get(stateCounter)) {
                         completeScheduler.setChoice(0, stateCounter);
+                        if (sound) {
+                            maybeStatesCounter++;
+                        }
                     // ~phiStates do not fulfill formulae so we can set an arbitrary action
                     } else if(notPhiStates.get(stateCounter)) {
                         completeScheduler.setChoice(0, stateCounter);
@@ -149,7 +160,7 @@ namespace storm {
                 storm::storage::BitVector notPsiStates = ~psiStates;
                 statesOfCoalition.complement();
 
-                auto result = computeUntilProbabilities(env, std::move(goal), transitionMatrix, backwardTransitions, storm::storage::BitVector(transitionMatrix.getRowGroupCount(), true), notPsiStates, qualitative, statesOfCoalition, produceScheduler, hint);
+                auto result = computeUntilProbabilitiesSound(env, std::move(goal), transitionMatrix, backwardTransitions, storm::storage::BitVector(transitionMatrix.getRowGroupCount(), true), notPsiStates, qualitative, statesOfCoalition, produceScheduler, hint);
                 for (auto& element : result.values) {
                     element = storm::utility::one<ValueType>() - element;
                 }

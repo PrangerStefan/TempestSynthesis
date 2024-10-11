@@ -50,7 +50,7 @@ namespace storm {
                     }
 
                     uint64_t iter = 0;
-                    constrainedChoiceValues = std::vector<ValueType>(xL.size(), storm::utility::zero<ValueType>());
+                    constrainedChoiceValues = std::vector<ValueType>(_transitionMatrix.getRowCount(), storm::utility::zero<ValueType>());
 
                     while (iter < maxIter) {
                         performIterationStep(env, dir);
@@ -73,10 +73,18 @@ namespace storm {
                     xL = xNewL();
                     xU = xNewU();
 
-                    /* if (isProduceSchedulerSet()) {
+                     if (isProduceSchedulerSet()) {
                         // We will be doing one more iteration step and track scheduler choices this time.
-                        performIterationStep(env, dir, &_producedOptimalChoices.get());
-                    } */
+                        _x1IsCurrent = !_x1IsCurrent;
+                        _multiplier->multiplyAndReduce(env, dir, xOldL(), nullptr, xNewL(), &_producedOptimalChoices.get(), &_statesOfCoalition);
+                        storm::storage::BitVector psiStates = _psiStates;
+                        auto xL_begin = xNewL().begin();
+                        std::for_each(xNewL().begin(), xNewL().end(), [&psiStates, &xL_begin](ValueType &it)
+                                      {
+                                          if (psiStates[&it - &(*xL_begin)])
+                                              it = 1;
+                                      });
+                    }
                 }
 
                 template <typename ValueType>
@@ -84,7 +92,6 @@ namespace storm {
                     storm::storage::BitVector reducedMinimizerActions = {storm::storage::BitVector(this->_transitionMatrix.getRowCount(), true)};
 
                     // under approximation
-                    auto start = std::chrono::steady_clock::now();
                     if (!_multiplier) {
                         prepareSolversAndMultipliers(env);
                     }
@@ -114,8 +121,6 @@ namespace storm {
                                   });
 
                     if (reducedMinimizerActions != _oldPolicy) { // new MECs only if Policy changed
-                        start = std::chrono::steady_clock::now();
-
                         // restricting the none optimal minimizer choices
                         _restrictedTransitions = this->_transitionMatrix.restrictRows(reducedMinimizerActions);
 
