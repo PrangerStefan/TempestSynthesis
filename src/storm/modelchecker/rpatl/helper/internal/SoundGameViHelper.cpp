@@ -42,7 +42,7 @@ namespace storm {
                     _x1U = xU;
                     _x2U = _x1U;
 
-                    if (this->isProduceSchedulerSet()) { // TODO Fabian scheduler !!!
+                    if (this->isProduceSchedulerSet()) {
                         if (!this->_producedOptimalChoices.is_initialized()) {
                             this->_producedOptimalChoices.emplace();
                         }
