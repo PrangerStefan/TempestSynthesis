@@ -29,9 +29,9 @@ namespace storm {
 
                 template <typename ValueType>
                 std::vector<ValueType> SparseSmgLraHelper<ValueType>::computeLongRunAverageRewardsSound(Environment const& env, storm::models::sparse::StandardRewardModel<ValueType> const& rewardModel) {
-                    STORM_LOG_DEBUG("Transition Matrix:\n" << _transitionMatrix);
+                    // STORM_LOG_DEBUG("Transition Matrix:\n" << _transitionMatrix);
                     std::vector<ValueType> result;
-                    std::vector<ValueType>  stateRewardsGetter;
+                    std::vector<ValueType>  stateRewardsGetter = std::vector<ValueType>(_transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
                     if (rewardModel.hasStateRewards()) {
                         stateRewardsGetter = rewardModel.getStateRewardVector();
                     }
@@ -45,60 +45,104 @@ namespace storm {
                     } else {
                         actionRewardsGetter = [] (uint64_t) { return storm::utility::zero<ValueType>(); };
                     }
-                    STORM_LOG_DEBUG("rewards: " << rewardModel.getStateRewardVector());
+                    std::vector<ValueType> b = getBVector(stateRewardsGetter, actionRewardsGetter);
+
+                    // If requested, allocate memory for the choices made
+                    if (this->_produceScheduler) {
+                        if (!this->_producedOptimalChoices.is_initialized()) {
+                            _producedOptimalChoices.emplace();
+                        }
+                        _producedOptimalChoices->resize(_transitionMatrix.getRowGroupCount());
+                    }
+
                     prepareMultiplier(env, rewardModel);
-                    performValueIteration(env, rewardModel, stateRewardsGetter, actionRewardsGetter, result);
+                    performValueIteration(env, rewardModel, b, actionRewardsGetter, result);
 
                     return result;
                 }
 
                 template <typename ValueType>
-                void SparseSmgLraHelper<ValueType>::performValueIteration(Environment const& env, storm::models::sparse::StandardRewardModel<ValueType> const& rewardModel, std::vector<ValueType> const& stateValueGetter, ValueGetter const& actionValueGetter, std::vector<ValueType>& result, std::vector<uint64_t>* choices, std::vector<ValueType>* choiceValues)
+                std::vector<ValueType> SparseSmgLraHelper<ValueType>::getBVector(std::vector<ValueType> const& stateRewardsGetter, ValueGetter const& actionRewardsGetter) {
+                    std::vector<ValueType> b = std::vector<ValueType>(_transitionMatrix.getRowCount());
+                    size_t globalChoiceCount = 0;
+                    auto rowGroupIndices = _transitionMatrix.getRowGroupIndices();
+                    for (size_t state = 0; state < _transitionMatrix.getRowGroupCount(); state++) {
+                        size_t rowGroupSize = rowGroupIndices[state + 1] - rowGroupIndices[state];
+                        for (size_t choice = 0; choice < rowGroupSize; choice++, globalChoiceCount++)
+                        {
+                            b[globalChoiceCount] = stateRewardsGetter[state] + actionRewardsGetter(globalChoiceCount);
+                        }
+                    }
+                    return b;
+                }
+
+                template <typename ValueType>
+                void SparseSmgLraHelper<ValueType>::performValueIteration(Environment const& env, storm::models::sparse::StandardRewardModel<ValueType> const& rewardModel, std::vector<ValueType> const& b, ValueGetter const& actionValueGetter, std::vector<ValueType>& result, std::vector<uint64_t>* choices, std::vector<ValueType>* choiceValues)
                 {
                     std::vector<uint64_t> choicesForStrategies = std::vector<uint64_t>(_transitionMatrix.getRowGroupCount(), 0);
-                    ValueType precision = storm::utility::convertNumber<ValueType>(env.solver().game().getPrecision());
+                    auto precision = storm::utility::convertNumber<ValueType>(env.solver().lra().getPrecision());
 
+                    Environment envMinMax = env;
+                    envMinMax.solver().lra().setPrecision(precision / 2.0);
+                    STORM_LOG_DEBUG(envMinMax.solver().lra().getPrecision());
                     do
                     {
-                        _x1IsCurrent = !_x1IsCurrent;
+                        size_t iteration_count = 0;
                         // Convergent recommender procedure
 
-                        _multiplier->multiplyAndReduce(env, _optimizationDirection, xOld(), nullptr, xNew(), &choicesForStrategies, &_statesOfCoalition);
-                        for (size_t i = 0; i < xNew().size(); i++)
-                        {
-                            xNew()[i] = xNew()[i] + stateValueGetter[i];
-                        }
+                        _multiplier->multiplyAndReduce(env, _optimizationDirection, xNew(), &b, xNew(), &choicesForStrategies, &_statesOfCoalition);
 
+                        if (iteration_count % 5 == 0) { // only every 5th iteration
                         storm::storage::BitVector fixedMaxStrat = getStrategyFixedBitVec(choicesForStrategies, MinMaxStrategy::MaxStrategy);
                         storm::storage::BitVector fixedMinStrat = getStrategyFixedBitVec(choicesForStrategies, MinMaxStrategy::MinStrategy);
-                        storm::storage::SparseMatrix<ValueType> restrictedMaxMatrix = _transitionMatrix.restrictRows(fixedMaxStrat);
-
-                        storm::storage::SparseMatrix<ValueType> restrictedMinMatrix = _transitionMatrix.restrictRows(fixedMinStrat);
 
                         // compute bounds
-                        storm::modelchecker::helper::SparseNondeterministicInfiniteHorizonHelper<ValueType> MaxSolver(restrictedMaxMatrix);
-                        MaxSolver.setOptimizationDirection(OptimizationDirection::Minimize);
-                        std::vector<ValueType> resultForMax = MaxSolver.computeLongRunAverageRewards(env, rewardModel);
+                            if (fixedMaxStrat != _fixedMaxStrat) {
+                                storm::storage::SparseMatrix<ValueType> restrictedMaxMatrix = _transitionMatrix.restrictRows(fixedMaxStrat);
 
-                        for (size_t i = 0; i < xNewL().size(); i++)
-                        {
-                            xNewL()[i] = std::max(xOldL()[i], resultForMax[i]);
-                        }
+                                storm::modelchecker::helper::SparseNondeterministicInfiniteHorizonHelper<ValueType> MaxSolver(restrictedMaxMatrix);
+                                MaxSolver.setOptimizationDirection(OptimizationDirection::Minimize);
+                                _resultForMax = MaxSolver.computeLongRunAverageRewards(envMinMax, rewardModel);
+                                STORM_LOG_DEBUG("resultMax: " << _resultForMax);
+                                _fixedMaxStrat = fixedMaxStrat;
 
-                        storm::modelchecker::helper::SparseNondeterministicInfiniteHorizonHelper<ValueType> MinSolver(restrictedMinMatrix);
-                        MinSolver.setOptimizationDirection(OptimizationDirection::Maximize);
-                        std::vector<ValueType> resultForMin = MinSolver.computeLongRunAverageRewards(env, rewardModel);
+                                for (size_t i = 0; i < xNewL().size(); i++) {
+                                    xNewL()[i] = std::max(xNewL()[i], _resultForMax[i]);
+                                }
+                            }
 
-                        for (size_t i = 0; i < xNewU().size(); i++)
-                        {
-                            xNewU()[i] = std::min(xOldU()[i], resultForMin[i]);
+                            if (fixedMinStrat != _fixedMinStrat) {
+                                storm::storage::SparseMatrix<ValueType> restrictedMinMatrix = _transitionMatrix.restrictRows(fixedMinStrat);
+
+                                storm::modelchecker::helper::SparseNondeterministicInfiniteHorizonHelper<ValueType> MinSolver(restrictedMinMatrix);
+                                MinSolver.setOptimizationDirection(OptimizationDirection::Maximize);
+                                _resultForMin = MinSolver.computeLongRunAverageRewards(envMinMax, rewardModel);
+                                STORM_LOG_DEBUG("resultMin: " << _resultForMin);
+                                _fixedMinStrat = fixedMinStrat;
+
+                                for (size_t i = 0; i < xNewU().size(); i++) {
+                                    xNewU()[i] = std::min(xNewU()[i], _resultForMin[i]);
+                                }
+                            }
                         }
 
                         STORM_LOG_DEBUG("xL " << xNewL());
                         STORM_LOG_DEBUG("xU " << xNewU());
 
                     } while (!checkConvergence(precision));
-                    result = xNewU();
+
+                    if (_produceScheduler) {
+                        _multiplier->multiplyAndReduce(env, _optimizationDirection, xNew(), &b, xNew(), &_producedOptimalChoices.get(), &_statesOfCoalition);
+                    }
+
+                    if (_produceChoiceValues) {
+                        if (!this->_choiceValues.is_initialized()) {
+                            this->_choiceValues.emplace();
+                        }
+                        this->_choiceValues->resize(this->_transitionMatrix.getRowCount());
+                        _choiceValues = calcChoiceValues(envMinMax, rewardModel);
+                    }
+                    result = xNewL();
                 }
 
 
@@ -108,7 +152,7 @@ namespace storm {
                     auto rowGroupIndices = this->_transitionMatrix.getRowGroupIndices();
                     STORM_LOG_DEBUG("choices " << choices);
 
-                    for(uint state = 0; state < rowGroupIndices.size() - 1; state++) {
+                    for(uint state = 0; state < _transitionMatrix.getRowGroupCount(); state++) {
                         if ((_minimizerStates[state] && strategy == MinMaxStrategy::MaxStrategy) || (!_minimizerStates[state] && strategy == MinMaxStrategy::MinStrategy))
                             continue;
 
@@ -122,6 +166,75 @@ namespace storm {
                     return restrictBy;
                 }
 
+                template <typename ValueType>
+                std::vector<ValueType> SparseSmgLraHelper<ValueType>::calcChoiceValues(Environment const& env, storm::models::sparse::StandardRewardModel<ValueType> const& rewardModel) {
+                    std::vector<ValueType> choiceValues(_transitionMatrix.getRowCount());
+
+                    storm::storage::SparseMatrix<ValueType> restrictedMaxMatrix = _transitionMatrix.restrictRows(_fixedMaxStrat);
+                    storm::modelchecker::helper::SparseNondeterministicInfiniteHorizonHelper<ValueType> MaxSolver(restrictedMaxMatrix);
+                    MaxSolver.setOptimizationDirection(OptimizationDirection::Minimize);
+                    MaxSolver.setProduceChoiceValues(true);
+                    MaxSolver.computeLongRunAverageRewards(env, rewardModel);
+                    std::vector<ValueType> minimizerChoices = MaxSolver.getChoiceValues();
+
+                    storm::storage::SparseMatrix<ValueType> restrictedMinMatrix = _transitionMatrix.restrictRows(_fixedMinStrat);
+                    storm::modelchecker::helper::SparseNondeterministicInfiniteHorizonHelper<ValueType> MinSolver(restrictedMinMatrix);
+                    MinSolver.setOptimizationDirection(OptimizationDirection::Maximize);
+                    MinSolver.setProduceChoiceValues(true);
+                    MinSolver.computeLongRunAverageRewards(env, rewardModel);
+                    std::vector<ValueType> maximizerChoices = MinSolver.getChoiceValues();
+
+                    auto rowGroupIndices = this->_transitionMatrix.getRowGroupIndices();
+
+                    auto minIt = minimizerChoices.begin();
+                    auto maxIt = maximizerChoices.begin();
+                    size_t globalCounter = 0;
+                    for(uint state = 0; state < _transitionMatrix.getRowGroupCount(); state++) {
+                        uint rowGroupSize = rowGroupIndices[state + 1] - rowGroupIndices[state];
+                        for(uint rowGroupIndex = 0; rowGroupIndex < rowGroupSize; rowGroupIndex++) {
+                            if (_minimizerStates[state]) {
+                                choiceValues[globalCounter] = *minIt;
+                                minIt++;
+                            }
+                            else {
+                                choiceValues[globalCounter] = *maxIt;
+                                maxIt++;
+                            }
+                            globalCounter++;
+                        }
+                        if (_minimizerStates[state]) {
+                            maxIt++;
+                        }
+                        else {
+                            minIt++;
+                        }
+                    }
+                    return choiceValues;
+                }
+
+                template <typename ValueType>
+                std::vector<ValueType> SparseSmgLraHelper<ValueType>::getChoiceValues() const {
+                    STORM_LOG_ASSERT(_produceChoiceValues, "Trying to get the computed choice values although this was not requested.");
+                    STORM_LOG_ASSERT(this->_choiceValues.is_initialized(), "Trying to get the computed choice values but none were available. Was there a computation call before?");
+                    return this->_choiceValues.get();
+                }
+
+                template <typename ValueType>
+                storm::storage::Scheduler<ValueType> SparseSmgLraHelper<ValueType>::extractScheduler() const{
+                    auto const& optimalChoices = getProducedOptimalChoices();
+                    storm::storage::Scheduler<ValueType> scheduler(optimalChoices.size());
+                    for (uint64_t state = 0; state < optimalChoices.size(); ++state) {
+                        scheduler.setChoice(optimalChoices[state], state);
+                    }
+                    return scheduler;
+                }
+
+                template <typename ValueType>
+                std::vector<uint64_t> const& SparseSmgLraHelper<ValueType>::getProducedOptimalChoices() const {
+                    STORM_LOG_ASSERT(_produceScheduler, "Trying to get the produced optimal choices although no scheduler was requested.");
+                    STORM_LOG_ASSERT(this->_producedOptimalChoices.is_initialized(), "Trying to get the produced optimal choices but none were available. Was there a computation call before?");
+                    return this->_producedOptimalChoices.get();
+                }
 
                 template <typename ValueType>
                 void SparseSmgLraHelper<ValueType>::prepareMultiplier(const Environment& env, storm::models::sparse::StandardRewardModel<ValueType> const& rewardModel)
@@ -133,6 +246,12 @@ namespace storm {
                     _x2L = _x1L;
                     _x1 = _x1L;
                     _x2 = _x1;
+
+                    _fixedMaxStrat = storm::storage::BitVector(_transitionMatrix.getRowCount(), false);
+                    _fixedMinStrat = storm::storage::BitVector(_transitionMatrix.getRowCount(), false);
+
+                    _resultForMin = std::vector<ValueType>(_transitionMatrix.getRowGroupCount());
+                    _resultForMax = std::vector<ValueType>(_transitionMatrix.getRowGroupCount());
 
                     _x1U = std::vector<ValueType>(_transitionMatrix.getRowGroupCount(), std::numeric_limits<ValueType>::infinity());
                     _x2U = _x1U;
@@ -146,22 +265,9 @@ namespace storm {
                     auto x1It = xNewL().begin();
                     auto x1Ite = xNewL().end();
                     auto x2It = xNewU().begin();
-                    ValueType maxDiff = ((*x2It) - (*x1It));
-                    ValueType minDiff = maxDiff;
-                    // The difference between maxDiff and minDiff is zero at this point. Thus, it doesn't make sense to check the threshold now.
-                    for (++x1It, ++x2It; x1It != x1Ite; ++x1It, ++x2It) {
+                    for (; x1It != x1Ite; x1It++, x2It++) {
                         ValueType diff = (*x2It - *x1It);
-                        // Potentially update maxDiff or minDiff
-                        bool skipCheck = false;
-                        if (maxDiff < diff) {
-                            maxDiff = diff;
-                        } else if (minDiff > diff) {
-                            minDiff = diff;
-                        } else {
-                            skipCheck = true;
-                        }
-                        // Check convergence
-                        if (!skipCheck && (maxDiff - minDiff) > threshold) {
+                        if (diff > threshold) {
                             return false;
                         }
                     }

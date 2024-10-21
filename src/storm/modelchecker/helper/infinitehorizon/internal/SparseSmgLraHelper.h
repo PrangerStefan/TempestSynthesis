@@ -24,7 +24,7 @@ namespace storm {
                 template <typename ValueType>
                 class SparseSmgLraHelper {
                 public:
-                    /// Function mapping from indices to values
+                    // Function mapping from indices to values
                     typedef std::function<ValueType(uint64_t)> ValueGetter;
 
                     SparseSmgLraHelper(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::BitVector const statesOfCoalition);
@@ -42,7 +42,11 @@ namespace storm {
                      */
                     void performValueIteration(Environment const& env, storm::models::sparse::StandardRewardModel<ValueType> const& rewardModel, std::vector<ValueType> const& stateValueGetter, ValueGetter const& actionValueGetter, std::vector<ValueType>& result, std::vector<uint64_t>* choices = nullptr, std::vector<ValueType>* choiceValues = nullptr);
 
+                    std::vector<ValueType> getChoiceValues() const;
 
+                    storm::storage::Scheduler<ValueType> extractScheduler() const;
+
+                    std::vector<uint64_t> const& getProducedOptimalChoices() const;
 
                     void prepareMultiplier(const Environment& env, storm::models::sparse::StandardRewardModel<ValueType> const& rewardModel);
 
@@ -91,6 +95,10 @@ namespace storm {
 
                     storm::storage::BitVector getStrategyFixedBitVec(std::vector<uint64_t> const& choices, MinMaxStrategy strategy);
 
+                    std::vector<ValueType> getBVector(std::vector<ValueType> const& stateRewardsGetter, ValueGetter const& actionRewardsGetter);
+
+                    std::vector<ValueType> calcChoiceValues(Environment const& env, storm::models::sparse::StandardRewardModel<ValueType> const& rewardModel);
+
                     /*!
                      * Must be called between two calls of performIterationStep.
                      */
@@ -128,9 +136,14 @@ namespace storm {
                     storm::storage::BitVector const _statesOfCoalition;
                     ValueType _strategyVIPrecision;
 
-
                     storm::storage::BitVector _relevantStates;
                     storm::storage::BitVector _minimizerStates;
+
+                    storm::storage::BitVector _fixedMinStrat;
+                    storm::storage::BitVector _fixedMaxStrat;
+                    std::vector<ValueType> _resultForMax;
+                    std::vector<ValueType> _resultForMin;
+
                     boost::optional<std::pair<storm::logic::ComparisonType, ValueType>> _valueThreshold;
                     storm::solver::OptimizationDirection _optimizationDirection;
                     bool _produceScheduler;
@@ -147,6 +160,9 @@ namespace storm {
                     std::unique_ptr<storm::solver::MinMaxLinearEquationSolver<ValueType>> _Solver;
                     std::unique_ptr<storm::solver::LinearEquationSolver<ValueType>> _DetIsSolver;
                     std::unique_ptr<storm::Environment> _IsSolverEnv;
+
+                    boost::optional<std::vector<uint64_t>> _producedOptimalChoices;
+                    boost::optional<std::vector<ValueType>> _choiceValues;
                 };
             }
         }
