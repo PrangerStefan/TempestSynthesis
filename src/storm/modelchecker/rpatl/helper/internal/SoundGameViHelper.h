@@ -72,8 +72,6 @@ namespace storm {
 
                     void reduceChoiceValues(std::vector<ValueType>& choiceValues, storm::storage::BitVector* result, std::vector<ValueType>& x);
 
-                    // multiplier now public for testing
-                    std::unique_ptr<storm::solver::Multiplier<ValueType>> _multiplier;
                 private:
                     /*!
                      * Performs one iteration step for value iteration
@@ -112,6 +110,8 @@ namespace storm {
                      * @return the produced scheduler of the most recent call.
                      */
                     std::vector<uint64_t>& getProducedOptimalChoices();
+
+                    std::unique_ptr<storm::solver::Multiplier<ValueType>> _multiplier;
 
                     storm::storage::SparseMatrix<ValueType> _transitionMatrix;
                     storm::storage::SparseMatrix<ValueType> _backwardTransitions;

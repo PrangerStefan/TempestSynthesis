@@ -40,7 +40,6 @@ namespace storm {
                     ValueType precision = storm::utility::convertNumber<ValueType>(env.solver().game().getPrecision());
 
                     uint64_t maxIter = env.solver().game().getMaximalNumberOfIterations();
-                    //_x1.assign(_transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
                     _x1L = xL;
                     _x2L = _x1L;
 
@@ -156,7 +155,6 @@ namespace storm {
                     // iterating over all MSECs
                     for (auto smec_it : MSEC) {
                         ValueType bestExit = 0;
-                        // if (smec_it.isErgodic(restrictedMatrix)) continue;
                         auto stateSet = smec_it.getStateSet();
                         for (uint state : stateSet) {
                             if (_psiStates[state]) {
@@ -239,10 +237,8 @@ namespace storm {
                     auto x1It = xNewL().begin();
                     auto x1Ite = xNewL().end();
                     auto x2It = xNewU().begin();
-                    // The difference between maxDiff and minDiff is zero at this point. Thus, it doesn't make sense to check the threshold now.
                     for (; x1It != x1Ite; x1It++, x2It++) {
                         ValueType diff = (*x2It - *x1It);
-                        // Potentially update maxDiff or minDiff
                         if (diff > threshold) {
                             return false;
                         }
