@@ -17,6 +17,8 @@
 #include "modelchecker/helper/infinitehorizon/SparseNondeterministicInfiniteHorizonHelper.h"
 #include "storm/exceptions/UnmetRequirementException.h"
 
+#define SOLVE_MDP 50
+
 namespace storm {
     namespace modelchecker {
         namespace helper {
@@ -55,7 +57,7 @@ namespace storm {
                     }
 
                     prepareMultiplier(env, rewardModel);
-                    performValueIteration(env, rewardModel, _b, actionRewardsGetter, result);
+                    performValueIteration(env, rewardModel, _b, result);
 
                     return result;
                 }
@@ -76,7 +78,7 @@ namespace storm {
                 }
 
                 template <typename ValueType>
-                void SparseSmgLraHelper<ValueType>::performValueIteration(Environment const& env, storm::models::sparse::StandardRewardModel<ValueType> const& rewardModel, std::vector<ValueType> const& b, ValueGetter const& actionValueGetter, std::vector<ValueType>& result, std::vector<uint64_t>* choices, std::vector<ValueType>* choiceValues)
+                void SparseSmgLraHelper<ValueType>::performValueIteration(Environment const& env, storm::models::sparse::StandardRewardModel<ValueType> const& rewardModel, std::vector<ValueType> const& b, std::vector<ValueType>& result)
                 {
                     std::vector<uint64_t> choicesForStrategies = std::vector<uint64_t>(_transitionMatrix.getRowGroupCount(), 0);
                     auto precision = storm::utility::convertNumber<ValueType>(env.solver().lra().getPrecision());
@@ -90,28 +92,24 @@ namespace storm {
 
                         _multiplier->multiplyAndReduce(env, _optimizationDirection, xNew(), &b, xNew(), &choicesForStrategies, &_statesOfCoalition);
 
-                        if (iteration_count % 50 == 0) { // only every 50th iteration
-                        storm::storage::BitVector fixedMaxStrat = getStrategyFixedBitVec(choicesForStrategies, MinMaxStrategy::MaxStrategy);
-                        storm::storage::BitVector fixedMinStrat = getStrategyFixedBitVec(choicesForStrategies, MinMaxStrategy::MinStrategy);
+                        if (iteration_count % SOLVE_MDP == 0) { // only every 50th iteration
+                            storm::storage::BitVector fixedMaxStrat = getStrategyFixedBitVec(choicesForStrategies, MinMaxStrategy::MaxStrategy);
+                            storm::storage::BitVector fixedMinStrat = getStrategyFixedBitVec(choicesForStrategies, MinMaxStrategy::MinStrategy);
 
-                        // compute bounds
+                            // compute bounds
                             if (fixedMaxStrat != _fixedMaxStrat) {
                                 storm::storage::SparseMatrix<ValueType> restrictedMaxMatrix = _transitionMatrix.restrictRows(fixedMaxStrat);
-                                STORM_LOG_DEBUG("xL " << xNewL()[0]);
 
                                 storm::modelchecker::helper::SparseNondeterministicInfiniteHorizonHelper<ValueType> MaxSolver(restrictedMaxMatrix);
-                                STORM_LOG_DEBUG("xL " << xNewL()[0]);
 
                                 MaxSolver.setOptimizationDirection(OptimizationDirection::Minimize);
                                 MaxSolver.setProduceChoiceValues(false);
                                 _resultForMax = MaxSolver.computeLongRunAverageRewards(envMinMax, rewardModel);
                                 _fixedMaxStrat = fixedMaxStrat;
-                                STORM_LOG_DEBUG("xL " << xNewL()[0]);
 
                                 for (size_t i = 0; i < xNewL().size(); i++) {
                                     xNewL()[i] = std::max(xNewL()[i], _resultForMax[i]);
                                 }
-                                STORM_LOG_DEBUG("xL " << xNewL()[0]);
                             }
 
                             if (fixedMinStrat != _fixedMinStrat) {
@@ -126,7 +124,6 @@ namespace storm {
                                 for (size_t i = 0; i < xNewU().size(); i++) {
                                     xNewU()[i] = std::min(xNewU()[i], _resultForMin[i]);
                                 }
-                                STORM_LOG_DEBUG("xU " << xNewU()[0]);
                             }
                         }
 

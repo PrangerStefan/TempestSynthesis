@@ -29,7 +29,7 @@ namespace storm {
 
                     SparseSmgLraHelper(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::BitVector const statesOfCoalition);
 
-                    void performValueIteration(Environment const& env, storm::models::sparse::StandardRewardModel<ValueType> const& rewardModel, std::vector<ValueType> const& stateValueGetter, ValueGetter const& actionValueGetter, std::vector<ValueType>& result, std::vector<uint64_t>* choices = nullptr, std::vector<ValueType>* choiceValues = nullptr);
+                    void performValueIteration(Environment const& env, storm::models::sparse::StandardRewardModel<ValueType> const& rewardModel, std::vector<ValueType> const& b, std::vector<ValueType>& result);
 
                     std::vector<ValueType> getChoiceValues() const;
 
@@ -56,13 +56,6 @@ namespace storm {
                 private:
 
                     bool checkConvergence(ValueType threshold) const;
-
-                    void performIterationStep(Environment const& env, storm::solver::OptimizationDirection const* dir = nullptr, std::vector<uint64_t>* choices = nullptr, std::vector<ValueType>* choiceValues = nullptr);
-
-                    struct ConvergenceCheckResult {
-                        bool isPrecisionAchieved;
-                        ValueType currentValue;
-                    };
 
                     storm::storage::BitVector getStrategyFixedBitVec(std::vector<uint64_t> const& choices, MinMaxStrategy strategy);
 
