@@ -22,7 +22,12 @@ namespace storm {
                 void SoundGameViHelper<ValueType>::prepareSolversAndMultipliers(const Environment& env) {
                     _multiplier = storm::solver::MultiplierFactory<ValueType>().create(env, _transitionMatrix);
                     _x1IsCurrent = false;
-                    _minimizerStates = _optimizationDirection == OptimizationDirection::Maximize ? _statesOfCoalition : ~_statesOfCoalition;
+                    if (_statesOfCoalition.size()) {
+                        _minimizerStates = _optimizationDirection == OptimizationDirection::Maximize ? _statesOfCoalition : ~_statesOfCoalition;
+                    }
+                    else {
+                        _minimizerStates = storm::storage::BitVector(_transitionMatrix.getRowGroupCount(), _optimizationDirection == OptimizationDirection::Minimize);
+                    }
                     _oldPolicy = storm::storage::BitVector(_transitionMatrix.getRowCount(), false);
                     _timing = std::vector<double>(5, 0);
                 }

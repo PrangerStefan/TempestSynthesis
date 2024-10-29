@@ -265,8 +265,8 @@ namespace storm {
 
             if (env.solver().isForceSoundness()) {
                 storm::modelchecker::helper::internal::SparseSmgLraHelper<ValueType> helper(this->getModel().getTransitionMatrix(), statesOfCoalition);
-                auto values = helper.computeLongRunAverageRewardsSound(env, rewardModel.get());
                 storm::modelchecker::helper::setInformationFromCheckTaskNondeterministic(helper, checkTask, this->getModel());
+                auto values = helper.computeLongRunAverageRewardsSound(env, rewardModel.get());
                 std::unique_ptr<CheckResult> result(new ExplicitQuantitativeCheckResult<ValueType>(std::move(values)));
 
                 if(checkTask.isShieldingTask()) {
@@ -281,8 +281,8 @@ namespace storm {
             }
 
             storm::modelchecker::helper::SparseNondeterministicGameInfiniteHorizonHelper<ValueType> helper(this->getModel().getTransitionMatrix(), statesOfCoalition);
-            auto values = helper.computeLongRunAverageRewards(env, rewardModel.get());
             storm::modelchecker::helper::setInformationFromCheckTaskNondeterministic(helper, checkTask, this->getModel());
+            auto values = helper.computeLongRunAverageRewards(env, rewardModel.get());
             std::unique_ptr<CheckResult> result(new ExplicitQuantitativeCheckResult<ValueType>(std::move(values)));
             if(checkTask.isShieldingTask()) {
                 storm::storage::BitVector allStatesBv = storm::storage::BitVector(this->getModel().getTransitionMatrix().getRowGroupCount(), true);
