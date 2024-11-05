@@ -9,6 +9,7 @@
 #include "storm/utility/vector.h"
 #include "storm/utility/graph.h"
 #include "storm/modelchecker/rpatl/helper/internal/GameViHelper.h"
+#include "storm/modelchecker/rpatl/helper/internal/SoundGameViHelper.h"
 
 namespace storm {
     namespace modelchecker {
@@ -57,6 +58,43 @@ namespace storm {
                 storm::utility::vector::setVectorValues(result, relevantStates, x);
                 storm::utility::vector::setVectorValues(result, psiStates, storm::utility::one<ValueType>());
                 return SMGSparseModelCheckingHelperReturnType<ValueType>(std::move(result), std::move(relevantStates), std::move(scheduler), std::move(constrainedChoiceValues));
+            }
+
+            template<typename ValueType>
+            SMGSparseModelCheckingHelperReturnType<ValueType> SparseSmgRpatlHelper<ValueType>::computeUntilProbabilitiesSound(Environment const& env, storm::solver::SolveGoal<ValueType>&& goal, storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::SparseMatrix<ValueType> const& backwardTransitions, storm::storage::BitVector const& phiStates, storm::storage::BitVector const& psiStates, bool qualitative, storm::storage::BitVector statesOfCoalition, bool produceScheduler, ModelCheckerHint const& hint) {
+
+                storm::modelchecker::helper::internal::SoundGameViHelper<ValueType> viHelper(transitionMatrix, statesOfCoalition);
+
+                // Initialize the x vector and solution vector result.
+                // TODO Fabian: maybe relevant states (later)
+                std::vector<ValueType> xL = std::vector<ValueType>(transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
+                // std::transform(xL.begin(), xL.end(), psiStates.begin(), xL, [](double& a) { a *= 3; }) // TODO Fabian
+                // assigning 1s to the xL vector for all Goal states
+                assert(xL.size() == psiStates.size());
+                for (size_t i = 0; i < xL.size(); i++)
+                {
+                    if (psiStates[xL.size() - i])
+                        xL[i] = 1;
+                }
+                STORM_LOG_DEBUG("xL " << xL);
+                std::vector<ValueType> xU = std::vector<ValueType>(transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
+                storm::storage::BitVector probGreater0 = storm::utility::graph::performProbGreater0(backwardTransitions, phiStates, psiStates);
+                // assigning 1s to the xU vector for all states except the states s where Prob(sEf) = 0 for all goal states f
+                assert(xU.size() == probGreater0.size());
+                for (size_t i = 0; i < xL.size(); i++)
+                {
+                    if (probGreater0[i])
+                        xU[i] = 1;
+                }
+                STORM_LOG_DEBUG("xU " << xU);
+
+                std::vector<ValueType> result = std::vector<ValueType>(transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
+                // std::vector<ValueType> constrainedChoiceValues = std::vector<ValueType>(b.size(), storm::utility::zero<ValueType>()); // TODO Fabian: do I need this?
+                std::vector<ValueType> constrainedChoiceValues;
+
+                viHelper.performValueIteration(env, xL, xU, goal.direction(), constrainedChoiceValues);
+
+                assert(false);
             }
 
             template<typename ValueType>

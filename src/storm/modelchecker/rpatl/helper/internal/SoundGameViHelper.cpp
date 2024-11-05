@@ -1,0 +1,255 @@
+#include "SoundGameViHelper.h"
+
+#include "storm/environment/Environment.h"
+#include "storm/environment/solver/SolverEnvironment.h"
+#include "storm/environment/solver/GameSolverEnvironment.h"
+
+
+#include "storm/utility/SignalHandler.h"
+#include "storm/utility/vector.h"
+
+namespace storm {
+    namespace modelchecker {
+        namespace helper {
+            namespace internal {
+
+                template <typename ValueType>
+                SoundGameViHelper<ValueType>::SoundGameViHelper(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::BitVector statesOfCoalition) : _transitionMatrix(transitionMatrix), _statesOfCoalition(statesOfCoalition) {
+                    // Intentionally left empty.
+                }
+
+                template <typename ValueType>
+                void SoundGameViHelper<ValueType>::prepareSolversAndMultipliers(const Environment& env) {
+                    STORM_LOG_DEBUG("\n" << _transitionMatrix);
+                    _multiplier = storm::solver::MultiplierFactory<ValueType>().create(env, _transitionMatrix);
+                    _x1IsCurrent = false;
+                }
+
+                template <typename ValueType>
+                void SoundGameViHelper<ValueType>::performValueIteration(Environment const& env, std::vector<ValueType>& xL, std::vector<ValueType>& xU, storm::solver::OptimizationDirection const dir, std::vector<ValueType>& constrainedChoiceValues) {
+                    // new pair (x_old, x_new) for over_approximation()
+
+                    prepareSolversAndMultipliers(env);
+                    // Get precision for convergence check.
+                    ValueType precision = storm::utility::convertNumber<ValueType>(env.solver().game().getPrecision());
+
+                    STORM_LOG_DEBUG("hello" << "world");
+                    uint64_t maxIter = env.solver().game().getMaximalNumberOfIterations();
+                    //_x1.assign(_transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
+                    _x1L = xL;
+                    _x2L = _x1L;
+
+                    _x1U = xU;
+                    _x2U = _x1U;
+
+                    if (this->isProduceSchedulerSet()) {
+                        if (!this->_producedOptimalChoices.is_initialized()) {
+                            this->_producedOptimalChoices.emplace();
+                        }
+                        this->_producedOptimalChoices->resize(this->_transitionMatrix.getRowGroupCount());
+                    }
+
+                    uint64_t iter = 0;
+                    constrainedChoiceValues = std::vector<ValueType>(xL.size(), storm::utility::zero<ValueType>()); // ??
+
+                    while (iter < maxIter) {
+                        performIterationStep(env, dir);
+                        if (checkConvergence(precision)) {
+                            //_multiplier->multiply(env, xNewL(), nullptr, constrainedChoiceValues); // TODO Fabian: ???
+                            break;
+                        }
+                        if (storm::utility::resources::isTerminate()) {
+                            break;
+                        }
+                        ++iter;
+                    }
+                    xL = xNewL();
+                    xU = xNewU();
+
+                    STORM_LOG_DEBUG("result xL: " << xL);
+                    STORM_LOG_DEBUG("result xU: " << xU);
+
+                    if (isProduceSchedulerSet()) {
+                        // We will be doing one more iteration step and track scheduler choices this time.
+                        performIterationStep(env, dir, &_producedOptimalChoices.get());
+                    }
+                }
+
+                template <typename ValueType>
+                void SoundGameViHelper<ValueType>::performIterationStep(Environment const& env, storm::solver::OptimizationDirection const dir, std::vector<uint64_t>* choices) {
+                    // under approximation
+                    if (!_multiplier) {
+                        prepareSolversAndMultipliers(env);
+                    }
+                    _x1IsCurrent = !_x1IsCurrent;
+
+                    if (choices == nullptr) {
+                        _multiplier->multiplyAndReduce(env, dir, xOldL(), nullptr, xNewL(), nullptr, &_statesOfCoalition);
+                    } else {
+                        _multiplier->multiplyAndReduce(env, dir, xOldL(), nullptr, xNewL(), choices, &_statesOfCoalition);
+                    }
+
+                    // over_approximation
+
+                    if (choices == nullptr) {
+                        _multiplier->multiplyAndReduce(env, dir, xOldU(), nullptr, xNewU(), nullptr, &_statesOfCoalition);
+                    } else {
+                        _multiplier->multiplyAndReduce(env, dir, xOldU(), nullptr, xNewU(), choices, &_statesOfCoalition);
+                    }
+
+                    // TODO Fabian: find_MSECs() & deflate()
+
+                }
+
+                template <typename ValueType>
+                bool SoundGameViHelper<ValueType>::checkConvergence(ValueType threshold) const {
+                    STORM_LOG_ASSERT(_multiplier, "tried to check for convergence without doing an iteration first.");
+                    // Now check whether the currently produced results are precise enough
+                    STORM_LOG_ASSERT(threshold > storm::utility::zero<ValueType>(), "Did not expect a non-positive threshold.");
+                    auto x1It = xOldL().begin();
+                    auto x1Ite = xOldL().end();
+                    auto x2It = xNewL().begin();
+                    ValueType maxDiff = (*x2It - *x1It);
+                    ValueType minDiff = maxDiff;
+                    // The difference between maxDiff and minDiff is zero at this point. Thus, it doesn't make sense to check the threshold now.
+                    for (++x1It, ++x2It; x1It != x1Ite; ++x1It, ++x2It) {
+                        ValueType diff = (*x2It - *x1It);
+                        // Potentially update maxDiff or minDiff
+                        bool skipCheck = false;
+                        if (maxDiff < diff) {
+                            maxDiff = diff;
+                        } else if (minDiff > diff) {
+                            minDiff = diff;
+                        } else {
+                            skipCheck = true;
+                        }
+                        // Check convergence
+                        if (!skipCheck && (maxDiff - minDiff) > threshold) {
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+
+                template <typename ValueType>
+                void SoundGameViHelper<ValueType>::setProduceScheduler(bool value) {
+                    _produceScheduler = value;
+                }
+
+                template <typename ValueType>
+                bool SoundGameViHelper<ValueType>::isProduceSchedulerSet() const {
+                    return _produceScheduler;
+                }
+
+                template <typename ValueType>
+                void SoundGameViHelper<ValueType>::setShieldingTask(bool value) {
+                    _shieldingTask = value;
+                }
+
+                template <typename ValueType>
+                bool SoundGameViHelper<ValueType>::isShieldingTask() const {
+                    return _shieldingTask;
+                }
+
+                template <typename ValueType>
+                void SoundGameViHelper<ValueType>::updateTransitionMatrix(storm::storage::SparseMatrix<ValueType> newTransitionMatrix) {
+                    _transitionMatrix = newTransitionMatrix;
+                }
+
+                template <typename ValueType>
+                void SoundGameViHelper<ValueType>::updateStatesOfCoalition(storm::storage::BitVector newStatesOfCoalition) {
+                    _statesOfCoalition = newStatesOfCoalition;
+                }
+
+                template <typename ValueType>
+                std::vector<uint64_t> const& SoundGameViHelper<ValueType>::getProducedOptimalChoices() const {
+                    STORM_LOG_ASSERT(this->isProduceSchedulerSet(), "Trying to get the produced optimal choices although no scheduler was requested.");
+                    STORM_LOG_ASSERT(this->_producedOptimalChoices.is_initialized(), "Trying to get the produced optimal choices but none were available. Was there a computation call before?");
+                    return this->_producedOptimalChoices.get();
+                }
+
+                template <typename ValueType>
+                std::vector<uint64_t>& SoundGameViHelper<ValueType>::getProducedOptimalChoices() {
+                    STORM_LOG_ASSERT(this->isProduceSchedulerSet(), "Trying to get the produced optimal choices although no scheduler was requested.");
+                    STORM_LOG_ASSERT(this->_producedOptimalChoices.is_initialized(), "Trying to get the produced optimal choices but none were available. Was there a computation call before?");
+                    return this->_producedOptimalChoices.get();
+                }
+
+                template <typename ValueType>
+                storm::storage::Scheduler<ValueType> SoundGameViHelper<ValueType>::extractScheduler() const{
+                    auto const& optimalChoices = getProducedOptimalChoices();
+                    storm::storage::Scheduler<ValueType> scheduler(optimalChoices.size());
+                    for (uint64_t state = 0; state < optimalChoices.size(); ++state) {
+                        scheduler.setChoice(optimalChoices[state], state);
+                    }
+                    return scheduler;
+                }
+
+                template <typename ValueType>
+                void SoundGameViHelper<ValueType>::getChoiceValues(Environment const& env, std::vector<ValueType> const& x, std::vector<ValueType>& choiceValues) {
+                    _multiplier->multiply(env, x, nullptr, choiceValues);
+                }
+
+                template <typename ValueType>
+                void SoundGameViHelper<ValueType>::fillChoiceValuesVector(std::vector<ValueType>& choiceValues, storm::storage::BitVector psiStates, std::vector<storm::storage::SparseMatrix<double>::index_type> rowGroupIndices) {
+                    std::vector<ValueType> allChoices = std::vector<ValueType>(rowGroupIndices.at(rowGroupIndices.size() - 1), storm::utility::zero<ValueType>());
+                    auto choice_it = choiceValues.begin();
+                    for(uint state = 0; state < rowGroupIndices.size() - 1; state++) {
+                        uint rowGroupSize = rowGroupIndices[state + 1] - rowGroupIndices[state];
+                        if (psiStates.get(state)) {
+                            for(uint choice = 0; choice < rowGroupSize; choice++, choice_it++) {
+                                allChoices.at(rowGroupIndices.at(state) + choice) = *choice_it;
+                            }
+                        }
+                    }
+                    choiceValues = allChoices;
+                }
+
+                template <typename ValueType>
+                std::vector<ValueType>& SoundGameViHelper<ValueType>::xNewL() {
+                    return _x1IsCurrent ? _x1L : _x2L;
+                }
+
+                template <typename ValueType>
+                std::vector<ValueType> const& SoundGameViHelper<ValueType>::xNewL() const {
+                    return _x1IsCurrent ? _x1L : _x2L;
+                }
+
+                template <typename ValueType>
+                std::vector<ValueType>& SoundGameViHelper<ValueType>::xOldL() {
+                    return _x1IsCurrent ? _x2L : _x1L;
+                }
+
+                template <typename ValueType>
+                std::vector<ValueType> const& SoundGameViHelper<ValueType>::xOldL() const {
+                    return _x1IsCurrent ? _x2L : _x1L;
+                }
+
+                template <typename ValueType>
+                std::vector<ValueType>& SoundGameViHelper<ValueType>::xNewU() {
+                    return _x1IsCurrent ? _x1U : _x2U;
+                }
+
+                template <typename ValueType>
+                std::vector<ValueType> const& SoundGameViHelper<ValueType>::xNewU() const {
+                    return _x1IsCurrent ? _x1U : _x2U;
+                }
+
+                template <typename ValueType>
+                std::vector<ValueType>& SoundGameViHelper<ValueType>::xOldU() {
+                    return _x1IsCurrent ? _x2U : _x1U;
+                }
+
+                template <typename ValueType>
+                std::vector<ValueType> const& SoundGameViHelper<ValueType>::xOldU() const {
+                    return _x1IsCurrent ? _x2U : _x1U;
+                }
+
+                template class SoundGameViHelper<double>;
+#ifdef STORM_HAVE_CARL
+                template class SoundGameViHelper<storm::RationalNumber>;
+#endif
+            }
+        }
+    }
+}
