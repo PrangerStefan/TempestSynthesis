@@ -161,11 +161,11 @@ namespace storm {
                             std::string choiceActionLabel = choiceOriginJson["action-label"];
                             std::string choiceCorrectionActionLabel = choiceOriginCorrectionJson["action-label"];
                             choiceOriginJson["action-label"] = choiceActionLabel.append(": ").append(choiceCorrectionActionLabel).append("\n");
-                            choiceJson["origin"] = choiceOriginJson;                            
+                            choiceJson["origin"] = choiceOriginJson;
                         }
                         if (model && model->hasChoiceLabeling()) {
                             auto choiceLabels = model->getChoiceLabeling().getLabelsOfChoice(globalChoiceIndex);
-                            
+
                             choiceJson["labels"] = std::vector<std::string>(choiceLabels.begin(),
                                                                             choiceLabels.end());
                         }
@@ -179,10 +179,10 @@ namespace storm {
                 } else {
                     choicesJson = "undefined";
                 }
-                
+
                 stateChoicesJson["c"] = std::move(choicesJson);
                 output.push_back(std::move(stateChoicesJson));
-            
+
             }
 
             out << output.dump(4);
@@ -192,6 +192,7 @@ namespace storm {
         template class PostScheduler<double>;
 #ifdef STORM_HAVE_CARL
         template class PostScheduler<storm::RationalNumber>;
+        template class PostScheduler<storm::RationalFunction>;
 #endif
     }
 }

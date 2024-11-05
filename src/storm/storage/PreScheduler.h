@@ -13,6 +13,7 @@ namespace storm {
         /*
          * TODO needs obvious changes in all comment blocks
          */
+        // TODO inherit from Scheduler?
         template <typename ValueType>
         class PreScheduler {
         public:

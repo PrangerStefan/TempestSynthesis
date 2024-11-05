@@ -10,8 +10,12 @@ namespace tempest {
             // Intentionally left empty.
         }
 
+
         template<typename ValueType, typename IndexType>
         storm::storage::PreScheduler<ValueType> PreShield<ValueType, IndexType>::construct() {
+            if constexpr (std::is_same_v<ValueType, storm::RationalFunction>) {
+                STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "todo");
+            }
             if (this->getOptimizationDirection() == storm::OptimizationDirection::Minimize) {
                 if(this->shieldingExpression->isRelative()) {
                     return constructWithCompareType<storm::utility::ElementLessEqual<ValueType>, true>();
@@ -38,7 +42,7 @@ namespace tempest {
             }
             for(uint state = 0; state < this->rowGroupIndices.size() - 1; state++) {
                 uint rowGroupSize = this->rowGroupIndices[state + 1] - this->rowGroupIndices[state];
-                if(this->relevantStates.get(state)) {
+                if(true){ //if(this->relevantStates.get(state)) {
                     storm::storage::PreSchedulerChoice<ValueType> enabledChoices;
                     ValueType optProbability;
                     if(std::is_same<Compare, storm::utility::ElementGreaterEqual<ValueType>>::value) {
@@ -47,7 +51,7 @@ namespace tempest {
                         optProbability = *std::min_element(choice_it, choice_it + rowGroupSize);
                     }
                     if(!relative && !choiceFilter(optProbability, optProbability, this->shieldingExpression->getValue())) {
-                        STORM_LOG_WARN("No shielding action possible with absolute comparison for state with index " << state);
+                        //STORM_LOG_WARN("No shielding action possible with absolute comparison for state with index " << state);
                         shield.setChoice(storm::storage::PreSchedulerChoice<ValueType>(), state, 0);
                         choice_it += rowGroupSize;
                         continue;
@@ -65,27 +69,38 @@ namespace tempest {
                 }
 
             }
+            preScheduler = std::make_shared<storm::storage::PreScheduler<ValueType>>(shield);
             return shield;
         }
 
 
         template<typename ValueType, typename IndexType>
-        void PreShield<ValueType, IndexType>::printToStream(std::ostream& out, std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model) {
-           this->construct().printToStream(out, this->shieldingExpression, model);
+        std::shared_ptr<storm::storage::PreScheduler<ValueType>> PreShield<ValueType, IndexType>::getScheduler() const {
+            return preScheduler;
+        }
+
+        template<typename ValueType, typename IndexType>
+        bool PreShield<ValueType, IndexType>::isPreShield() const {
+            return true;
         }
 
         template<typename ValueType, typename IndexType>
         void PreShield<ValueType, IndexType>::printJsonToStream(std::ostream& out, std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model) {
-            this->construct().printJsonToStream(out, model);
+            preScheduler->printJsonToStream(out, model);
         }
+
+        template<typename ValueType, typename IndexType>
+        void PreShield<ValueType, IndexType>::printToStream(std::ostream& out, std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model) {
+            preScheduler->printToStream(out, this->shieldingExpression, model);
+        }
+
 
 
         // Explicitly instantiate appropriate classes
         template class PreShield<double, typename storm::storage::SparseMatrix<double>::index_type>;
 #ifdef STORM_HAVE_CARL
         template class PreShield<storm::RationalNumber, typename storm::storage::SparseMatrix<storm::RationalNumber>::index_type>;
-        //template class PreShield<storm::RationalFunction, typename storm::storage::SparseMatrix<storm::RationalFunction>::index_type>;
-
+        template class PreShield<storm::RationalFunction, typename storm::storage::SparseMatrix<storm::RationalNumber>::index_type>;
 #endif
     }
 }

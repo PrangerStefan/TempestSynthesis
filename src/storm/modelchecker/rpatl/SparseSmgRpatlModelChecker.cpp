@@ -141,13 +141,14 @@ namespace storm {
             ExplicitQualitativeCheckResult const& leftResult = leftResultPointer->asExplicitQualitativeCheckResult();
             ExplicitQualitativeCheckResult const& rightResult = rightResultPointer->asExplicitQualitativeCheckResult();
 
+
             auto ret = storm::modelchecker::helper::SparseSmgRpatlHelper<ValueType>::computeUntilProbabilities(env, storm::solver::SolveGoal<ValueType>(this->getModel(), checkTask), this->getModel().getTransitionMatrix(), this->getModel().getBackwardTransitions(), leftResult.getTruthValuesVector(), rightResult.getTruthValuesVector(), checkTask.isQualitativeSet(), statesOfCoalition, checkTask.isProduceSchedulersSet(), checkTask.getHint());
             std::unique_ptr<CheckResult> result(new ExplicitQuantitativeCheckResult<ValueType>(std::move(ret.values)));
             if(checkTask.isShieldingTask()) {
                 storm::storage::BitVector allStatesBv = storm::storage::BitVector(this->getModel().getTransitionMatrix().getRowGroupCount(), true);
                 auto shield = tempest::shields::createShield<ValueType>(std::make_shared<storm::models::sparse::Smg<ValueType>>(this->getModel()), std::move(ret.choiceValues), checkTask.getShieldingExpression(), checkTask.getOptimizationDirection(), allStatesBv, ~statesOfCoalition);
-                result->asExplicitQuantitativeCheckResult<ValueType>().setShield(std::move(shield));                    
-            } 
+                result->asExplicitQuantitativeCheckResult<ValueType>().setShield(std::move(shield));
+            }
             if (checkTask.isProduceSchedulersSet() && ret.scheduler) {
                 result->asExplicitQuantitativeCheckResult<ValueType>().setScheduler(std::move(ret.scheduler));
             }
@@ -165,8 +166,8 @@ namespace storm {
             if(checkTask.isShieldingTask()) {
                 storm::storage::BitVector allStatesBv = storm::storage::BitVector(this->getModel().getTransitionMatrix().getRowGroupCount(), true);
                 auto shield = tempest::shields::createShield<ValueType>(std::make_shared<storm::models::sparse::Smg<ValueType>>(this->getModel()), std::move(ret.choiceValues), checkTask.getShieldingExpression(), checkTask.getOptimizationDirection(), allStatesBv, ~statesOfCoalition);
-                result->asExplicitQuantitativeCheckResult<ValueType>().setShield(std::move(shield));                    
-            } 
+                result->asExplicitQuantitativeCheckResult<ValueType>().setShield(std::move(shield));
+            }
             if (checkTask.isProduceSchedulersSet() && ret.scheduler) {
                 result->asExplicitQuantitativeCheckResult<ValueType>().setScheduler(std::move(ret.scheduler));
             }
@@ -202,7 +203,7 @@ namespace storm {
             if(checkTask.isShieldingTask()) {
                 storm::storage::BitVector allStatesBv = storm::storage::BitVector(this->getModel().getTransitionMatrix().getRowGroupCount(), true);
                 auto shield = tempest::shields::createShield<ValueType>(std::make_shared<storm::models::sparse::Smg<ValueType>>(this->getModel()), std::move(ret.choiceValues), checkTask.getShieldingExpression(), checkTask.getOptimizationDirection(), allStatesBv, ~statesOfCoalition);
-                result->asExplicitQuantitativeCheckResult<ValueType>().setShield(std::move(shield));                    
+                result->asExplicitQuantitativeCheckResult<ValueType>().setShield(std::move(shield));
             }
             return result;
         }
@@ -225,7 +226,7 @@ namespace storm {
             std::unique_ptr<CheckResult> result(new ExplicitQuantitativeCheckResult<ValueType>(std::move(ret.values)));
             if(checkTask.isShieldingTask()) {
                 auto shield = tempest::shields::createShield<ValueType>(std::make_shared<storm::models::sparse::Smg<ValueType>>(this->getModel()), std::move(ret.choiceValues), checkTask.getShieldingExpression(), checkTask.getOptimizationDirection(), std::move(ret.relevantStates), ~statesOfCoalition);
-                result->asExplicitQuantitativeCheckResult<ValueType>().setShield(std::move(shield));                    
+                result->asExplicitQuantitativeCheckResult<ValueType>().setShield(std::move(shield));
             }
             return result;
         }
@@ -246,8 +247,8 @@ namespace storm {
             if(checkTask.isShieldingTask()) {
                 storm::storage::BitVector allStatesBv = storm::storage::BitVector(this->getModel().getTransitionMatrix().getRowGroupCount(), true);
                 auto shield = tempest::shields::createQuantitativeShield<ValueType>(std::make_shared<storm::models::sparse::Smg<ValueType>>(this->getModel()), helper.getChoiceValues(), checkTask.getShieldingExpression(), checkTask.getOptimizationDirection(), allStatesBv, statesOfCoalition);
-                result->asExplicitQuantitativeCheckResult<ValueType>().setShield(std::move(shield));                    
-            } 
+                result->asExplicitQuantitativeCheckResult<ValueType>().setShield(std::move(shield));
+            }
             if (checkTask.isProduceSchedulersSet()) {
                 result->asExplicitQuantitativeCheckResult<ValueType>().setScheduler(std::make_unique<storm::storage::Scheduler<ValueType>>(helper.extractScheduler()));
             }

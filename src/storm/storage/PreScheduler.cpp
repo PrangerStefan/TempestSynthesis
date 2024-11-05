@@ -138,7 +138,7 @@ namespace storm {
         }
 
 
-      
+
 
         template <typename ValueType>
         void PreScheduler<ValueType>::printJsonToStream(std::ostream& out, std::shared_ptr<storm::models::sparse::Model<ValueType>> model, bool skipUniqueChoices) const {
@@ -194,7 +194,7 @@ namespace storm {
                                     storm::json<storm::RationalNumber> updateJson;
                                     // next model state
                                     if (model && model->hasStateValuations()) {
-                                        updateJson["s'"] = model->getStateValuations().template toJson<storm::RationalNumber>(entryIt->getColumn());    
+                                        updateJson["s'"] = model->getStateValuations().template toJson<storm::RationalNumber>(entryIt->getColumn());
                                     } else {
                                         updateJson["s'"] = entryIt->getColumn();
                                     }
@@ -209,7 +209,7 @@ namespace storm {
                     } else {
                         choicesJson = "undefined";
                     }
-                 
+
                     stateChoicesJson["c"] = std::move(choicesJson);
                     output.push_back(std::move(stateChoicesJson));
                 }
@@ -223,6 +223,7 @@ namespace storm {
         template class PreScheduler<double>;
 #ifdef STORM_HAVE_CARL
         template class PreScheduler<storm::RationalNumber>;
+        template class PreScheduler<storm::RationalFunction>;
 #endif
     }
 }

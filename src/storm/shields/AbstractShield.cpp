@@ -1,4 +1,7 @@
 #include "storm/shields/AbstractShield.h"
+#include "storm/shields/PreShield.h"
+#include "storm/shields/PostShield.h"
+#include "storm/shields/OptimalShield.h"
 
 #include <boost/core/typeinfo.hpp>
 
@@ -30,10 +33,61 @@ namespace tempest {
         }
 
         template<typename ValueType, typename IndexType>
+        void AbstractShield<ValueType, IndexType>::setShieldingExpression(std::shared_ptr<storm::logic::ShieldExpression const> const& shieldingExpression) {
+            this->shieldingExpression = shieldingExpression;
+        }
+
+        template<typename ValueType, typename IndexType>
+        bool AbstractShield<ValueType, IndexType>::isPreShield() const {
+            return false;
+        }
+
+        template<typename ValueType, typename IndexType>
+        bool AbstractShield<ValueType, IndexType>::isPostShield() const {
+            return false;
+        }
+
+        template<typename ValueType, typename IndexType>
+        bool AbstractShield<ValueType, IndexType>::isOptimalShield() const {
+            return false;
+        }
+
+        template<typename ValueType, typename IndexType>
+        PreShield<ValueType, IndexType>& AbstractShield<ValueType, IndexType>::asPreShield() {
+            return dynamic_cast<PreShield<ValueType, IndexType>&>(*this);
+        }
+
+        template<typename ValueType, typename IndexType>
+        PreShield<ValueType, IndexType> const& AbstractShield<ValueType, IndexType>::asPreShield() const {
+            return dynamic_cast<PreShield<ValueType, IndexType> const&>(*this);
+        }
+
+        template<typename ValueType, typename IndexType>
+        PostShield<ValueType, IndexType>& AbstractShield<ValueType, IndexType>::asPostShield() {
+            return dynamic_cast<PostShield<ValueType, IndexType>&>(*this);
+        }
+
+        template<typename ValueType, typename IndexType>
+        PostShield<ValueType, IndexType> const& AbstractShield<ValueType, IndexType>::asPostShield() const {
+            return dynamic_cast<PostShield<ValueType, IndexType> const&>(*this);
+        }
+
+        template<typename ValueType, typename IndexType>
+        OptimalShield<ValueType, IndexType>& AbstractShield<ValueType, IndexType>::asOptimalShield() {
+            return dynamic_cast<OptimalShield<ValueType, IndexType>&>(*this);
+        }
+
+        template<typename ValueType, typename IndexType>
+        OptimalShield<ValueType, IndexType> const& AbstractShield<ValueType, IndexType>::asOptimalShield() const {
+            return dynamic_cast<OptimalShield<ValueType, IndexType> const&>(*this);
+        }
+
+
+        template<typename ValueType, typename IndexType>
         std::string AbstractShield<ValueType, IndexType>::getClassName() const {
             return std::string(boost::core::demangled_name(BOOST_CORE_TYPEID(*this)));
         }
-        
+
         // Explicitly instantiate appropriate
         template class AbstractShield<double, typename storm::storage::SparseMatrix<double>::index_type>;
 #ifdef STORM_HAVE_CARL
