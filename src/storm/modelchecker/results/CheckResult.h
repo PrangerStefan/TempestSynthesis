@@ -113,6 +113,7 @@ namespace storm {
             SymbolicParetoCurveCheckResult<Type, ValueType> const& asSymbolicParetoCurveCheckResult() const;
 
             virtual bool hasScheduler() const;
+            virtual bool hasShield() const;
 
             virtual std::ostream& writeToStream(std::ostream& out) const = 0;
         };

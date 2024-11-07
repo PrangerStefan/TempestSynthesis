@@ -64,10 +64,41 @@ namespace tempest {
             return shield;
         }
 
+
+        template<typename ValueType, typename IndexType>
+        std::shared_ptr<storm::storage::PostScheduler<ValueType>> OptimalShield<ValueType, IndexType>::getScheduler() const {
+            return optimalScheduler;
+        }
+
+        template<typename ValueType, typename IndexType>
+        bool OptimalShield<ValueType, IndexType>::isOptimalShield() const {
+            return true;
+        }
+
+        template<typename ValueType, typename IndexType>
+        void OptimalShield<ValueType, IndexType>::printJsonToStream(std::ostream& out, std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model) {
+            optimalScheduler->printJsonToStream(out, model);
+        }
+
+        template<typename ValueType, typename IndexType>
+        void OptimalShield<ValueType, IndexType>::printToStream(std::ostream& out, std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model) {
+            optimalScheduler->printToStream(out, this->shieldingExpression, model);
+        }
+
+        //template<typename ValueType, typename IndexType>
+        //template<typename VT>
+        //std::enable_if_t<std::is_same<VT, storm::RationalFunction>::value, storm::storage::PostScheduler<VT>> OptimalShield<ValueType, IndexType>::construct() {
+        //    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "todo");
+        //}
+
+
+
         // Explicitly instantiate appropriate classes
         template class OptimalShield<double, typename storm::storage::SparseMatrix<double>::index_type>;
 #ifdef STORM_HAVE_CARL
         template class OptimalShield<storm::RationalNumber, typename storm::storage::SparseMatrix<storm::RationalNumber>::index_type>;
+        template class OptimalShield<storm::RationalFunction, typename storm::storage::SparseMatrix<storm::RationalFunction>::index_type>;
+
 #endif
     }
 }

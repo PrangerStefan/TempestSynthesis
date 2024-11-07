@@ -25,6 +25,7 @@ namespace storm {
             const std::string IOSettings::exportCdfOptionName = "exportcdf";
             const std::string IOSettings::exportCdfOptionShortName = "cdf";
             const std::string IOSettings::exportSchedulerOptionName = "exportscheduler";
+            const std::string IOSettings::exportShieldOptionName = "exportshield";
             const std::string IOSettings::exportCheckResultOptionName = "exportresult";
             const std::string IOSettings::explicitOptionName = "explicit";
             const std::string IOSettings::explicitOptionShortName = "exp";
@@ -64,6 +65,7 @@ namespace storm {
                                         .addArgument(storm::settings::ArgumentBuilder::createStringArgument("filename", "The name of the file to which the model is to be written.").build()).build());
                 this->addOption(storm::settings::OptionBuilder(moduleName, exportCdfOptionName, false, "Exports the cumulative density function for reward bounded properties into a .csv file.").setIsAdvanced().setShortName(exportCdfOptionShortName).addArgument(storm::settings::ArgumentBuilder::createStringArgument("directory", "A path to an existing directory where the cdf files will be stored.").build()).build());
                 this->addOption(storm::settings::OptionBuilder(moduleName, exportSchedulerOptionName, false, "Exports the choices of an optimal scheduler to the given file (if supported by engine).").setIsAdvanced().addArgument(storm::settings::ArgumentBuilder::createStringArgument("filename", "The output file. Use file extension '.json' to export in json.").build()).build());
+                this->addOption(storm::settings::OptionBuilder(moduleName, exportShieldOptionName, false, "Exports the the generated shield to the given file (if supported by engine).").setIsAdvanced().addArgument(storm::settings::ArgumentBuilder::createStringArgument("filename", "The output file. Use file extension '.json' to export in json.").build()).build());
                 this->addOption(storm::settings::OptionBuilder(moduleName, exportCheckResultOptionName, false, "Exports the result to a given file (if supported by engine). The export will be in json.").setIsAdvanced().addArgument(storm::settings::ArgumentBuilder::createStringArgument("filename", "The output file.").build()).build());
                 this->addOption(storm::settings::OptionBuilder(moduleName, exportExplicitOptionName, "", "If given, the loaded model will be written to the specified file in the drn format.")
                                 .addArgument(storm::settings::ArgumentBuilder::createStringArgument("filename", "the name of the file to which the model is to be writen.").build()).build());
@@ -176,6 +178,14 @@ namespace storm {
             
             std::string IOSettings::getExportSchedulerFilename() const {
                 return this->getOption(exportSchedulerOptionName).getArgumentByName("filename").getValueAsString();
+            }
+
+            bool IOSettings::isExportShieldSet() const {
+                return this->getOption(exportShieldOptionName).getHasOptionBeenSet();
+            }
+
+            std::string IOSettings::getExportShieldFilename() const {
+                return this->getOption(exportShieldOptionName).getArgumentByName("filename").getValueAsString();
             }
 
             bool IOSettings::isExportCheckResultSet() const {

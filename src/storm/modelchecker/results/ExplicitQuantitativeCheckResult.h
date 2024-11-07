@@ -14,6 +14,8 @@
 #include "storm/utility/OsDetection.h"
 #include "storm/adapters/JsonAdapter.h"
 
+#include "storm/shields/AbstractShield.h"
+
 namespace storm {
     namespace modelchecker {
         // fwd
@@ -24,7 +26,8 @@ namespace storm {
         public:
             typedef std::vector<ValueType> vector_type;
             typedef std::map<storm::storage::sparse::state_type, ValueType> map_type;
-            
+            typedef typename storm::storage::SparseMatrix<ValueType>::index_type IndexType;  
+
             ExplicitQuantitativeCheckResult();
             ExplicitQuantitativeCheckResult(map_type const& values);
             ExplicitQuantitativeCheckResult(map_type&& values);
@@ -74,10 +77,16 @@ namespace storm {
             virtual ValueType sum() const override;
             
             virtual bool hasScheduler() const override;
+            virtual bool hasShield() const override;
+
             void setScheduler(std::unique_ptr<storm::storage::Scheduler<ValueType>>&& scheduler);
             storm::storage::Scheduler<ValueType> const& getScheduler() const;
             storm::storage::Scheduler<ValueType>& getScheduler();
             
+            void setShield(std::unique_ptr<tempest::shields::AbstractShield<ValueType, IndexType>> shield);
+            std::shared_ptr<tempest::shields::AbstractShield<ValueType, IndexType>> const& getShield() const;
+            std::shared_ptr<tempest::shields::AbstractShield<ValueType, IndexType>>& getShield();
+
             storm::json<ValueType> toJson(boost::optional<storm::storage::sparse::StateValuations> const& stateValuations = boost::none) const;
             
         private:
@@ -86,6 +95,8 @@ namespace storm {
             
             // An optional scheduler that accompanies the values.
             boost::optional<std::shared_ptr<storm::storage::Scheduler<ValueType>>> scheduler;
+            boost::optional<std::shared_ptr<tempest::shields::AbstractShield<ValueType, IndexType>>> shield;
+
         };
     }
 }
