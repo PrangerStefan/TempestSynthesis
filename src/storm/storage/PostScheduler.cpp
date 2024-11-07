@@ -41,6 +41,12 @@ namespace storm {
         }
 
         template <typename ValueType>
+        PostSchedulerChoice<ValueType> const& PostScheduler<ValueType>::getChoice(uint_fast64_t modelState, uint_fast64_t memoryState) const {
+            STORM_LOG_ASSERT(modelState < schedulerChoiceMapping[memoryState].size(), "Illegal model state index");
+            return schedulerChoiceMapping[memoryState][modelState];
+        }
+
+        template <typename ValueType>
         bool PostScheduler<ValueType>::isDeterministicScheduler() const {
             return true;
         }
@@ -122,9 +128,71 @@ namespace storm {
             out << "___________________________________________________________________" << std::endl;
         }
 
+        template <typename ValueType>
+        void PostScheduler<ValueType>::printJsonToStream(std::ostream& out, std::shared_ptr<storm::models::sparse::Model<ValueType>> model, bool skipUniqueChoices) const {
+            STORM_LOG_THROW(model == nullptr || model->getNumberOfStates() == schedulerChoiceMapping.front().size(), storm::exceptions::InvalidOperationException, "The given model is not compatible with this scheduler.");
+            STORM_LOG_WARN_COND(!(skipUniqueChoices && model == nullptr), "Can not skip unique choices if the model is not given.");
+            storm::json<storm::RationalNumber> output;
+            for (uint64_t state = 0; state < schedulerChoiceMapping.front().size(); ++state) {
+                // Check whether the state is skipped
+                if (skipUniqueChoices && model != nullptr && model->getTransitionMatrix().getRowGroupSize(state) == 1) {
+                    continue;
+                }
+
+                storm::json<storm::RationalNumber> stateChoicesJson;
+                if (model && model->hasStateValuations()) {
+                    stateChoicesJson["s"] = model->getStateValuations().template toJson<storm::RationalNumber>(state);
+                } else {
+                    stateChoicesJson["s"] = state;
+                }
+
+                auto const &choice = schedulerChoiceMapping[0][state];
+                storm::json<storm::RationalNumber> choicesJson;
+                if (!choice.getChoiceMap().empty()) {
+                    for (auto const &choiceProbPair : choice.getChoiceMap()) {
+                        uint64_t globalChoiceIndex = model->getTransitionMatrix().getRowGroupIndices()[state] + std::get<0>(choiceProbPair);
+                        uint64_t globalChoiceCorrectionIndex = model->getTransitionMatrix().getRowGroupIndices()[state] + std::get<1>(choiceProbPair);
+                        storm::json<storm::RationalNumber> choiceJson;
+                        if (model && model->hasChoiceOrigins() &&
+                            model->getChoiceOrigins()->getIdentifier(globalChoiceIndex) !=
+                            model->getChoiceOrigins()->getIdentifierForChoicesWithNoOrigin()) {
+                            auto choiceOriginJson = model->getChoiceOrigins()->getChoiceAsJson(globalChoiceIndex);
+                            auto choiceOriginCorrectionJson = model->getChoiceOrigins()->getChoiceAsJson(globalChoiceCorrectionIndex);
+                            std::string choiceActionLabel = choiceOriginJson["action-label"];
+                            std::string choiceCorrectionActionLabel = choiceOriginCorrectionJson["action-label"];
+                            choiceOriginJson["action-label"] = choiceActionLabel.append(": ").append(choiceCorrectionActionLabel).append("\n");
+                            choiceJson["origin"] = choiceOriginJson;
+                        }
+                        if (model && model->hasChoiceLabeling()) {
+                            auto choiceLabels = model->getChoiceLabeling().getLabelsOfChoice(globalChoiceIndex);
+
+                            choiceJson["labels"] = std::vector<std::string>(choiceLabels.begin(),
+                                                                            choiceLabels.end());
+                        }
+                        choiceJson["index"] = globalChoiceIndex;
+                        choiceJson["prob"] = storm::utility::convertNumber<storm::RationalNumber>(
+                                std::get<1>(choiceProbPair));
+
+
+                        choicesJson.push_back(std::move(choiceJson));
+                    }
+                } else {
+                    choicesJson = "undefined";
+                }
+
+                stateChoicesJson["c"] = std::move(choicesJson);
+                output.push_back(std::move(stateChoicesJson));
+
+            }
+
+            out << output.dump(4);
+        }
+
+
         template class PostScheduler<double>;
 #ifdef STORM_HAVE_CARL
         template class PostScheduler<storm::RationalNumber>;
+        template class PostScheduler<storm::RationalFunction>;
 #endif
     }
 }

@@ -9,6 +9,7 @@
 #include "storm/utility/vector.h"
 #include "storm/utility/graph.h"
 #include "storm/modelchecker/rpatl/helper/internal/GameViHelper.h"
+#include "storm/modelchecker/rpatl/helper/internal/SoundGameViHelper.h"
 
 namespace storm {
     namespace modelchecker {
@@ -21,8 +22,7 @@ namespace storm {
 
                 // Relevant states are those states which are phiStates and not PsiStates.
                 storm::storage::BitVector relevantStates = phiStates & ~psiStates;
-
-                // Initialize the x vector and solution vector result.
+                    // Initialize the x vector and solution vector result.
                 std::vector<ValueType> x = std::vector<ValueType>(relevantStates.getNumberOfSetBits(), storm::utility::zero<ValueType>());
                 std::vector<ValueType> result = std::vector<ValueType>(transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
                 std::vector<ValueType> b = transitionMatrix.getConstrainedRowGroupSumVector(relevantStates, psiStates);
@@ -60,7 +60,80 @@ namespace storm {
             }
 
             template<typename ValueType>
-            storm::storage::Scheduler<ValueType> SparseSmgRpatlHelper<ValueType>::expandScheduler(storm::storage::Scheduler<ValueType> scheduler, storm::storage::BitVector psiStates, storm::storage::BitVector notPhiStates) {
+            SMGSparseModelCheckingHelperReturnType<ValueType> SparseSmgRpatlHelper<ValueType>::computeUntilProbabilitiesSound(Environment const& env, storm::solver::SolveGoal<ValueType>&& goal, storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::SparseMatrix<ValueType> const& backwardTransitions, storm::storage::BitVector const& phiStates, storm::storage::BitVector const& psiStates, bool qualitative, storm::storage::BitVector statesOfCoalition, bool produceScheduler, ModelCheckerHint const& hint) {
+                storm::storage::BitVector probGreater0 = storm::utility::graph::performProbGreater0(backwardTransitions, phiStates, psiStates);
+                std::unique_ptr<storm::storage::Scheduler<ValueType>> scheduler;
+                storm::storage::BitVector relevantStates = phiStates;
+
+                // Initialize the x vector and solution vector result.
+                std::vector<ValueType> xL = std::vector<ValueType>(transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
+                // assigning 1s to the xL vector for all Goal states
+                auto xL_begin = xL.begin();
+                std::for_each(xL.begin(), xL.end(), [&psiStates, &xL_begin](ValueType &it)
+                              {
+                                  if (psiStates[&it - &(*xL_begin)])
+                                      it = 1;
+                              });
+                size_t i = 0;
+                auto new_end = std::remove_if(xL.begin(), xL.end(), [&relevantStates, &i](const auto& item) {
+                    bool ret = !(relevantStates[i]);
+                    i++;
+                    return ret;
+                });
+                xL.erase(new_end, xL.end());
+                xL.resize(relevantStates.getNumberOfSetBits());
+                std::vector<ValueType> xU = std::vector<ValueType>(transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
+                // assigning 1s to the xU vector for all states except the states s where Prob(sEf) = 0 for all goal states f
+                auto xU_begin = xU.begin();
+                std::for_each(xU.begin(), xU.end(), [&probGreater0, &xU_begin](ValueType &it)
+                              {
+                                  if (probGreater0[&it - &(*xU_begin)])
+                                      it = 1;
+                              });
+                i = 0;
+                auto new_end_U = std::remove_if(xU.begin(), xU.end(), [&relevantStates, &i](const auto& item) {
+                    bool ret = !(relevantStates[i]);
+                    i++;
+                    return ret;
+                });
+                xU.erase(new_end_U, xU.end());
+                xU.resize(relevantStates.getNumberOfSetBits());
+
+                storm::storage::BitVector clippedPsiStates(relevantStates.getNumberOfSetBits());
+                clippedPsiStates.setClippedStatesOfCoalition(relevantStates, psiStates);
+
+                std::vector<ValueType> b = transitionMatrix.getConstrainedRowGroupSumVector(relevantStates, psiStates);
+                std::vector<ValueType> result = std::vector<ValueType>(transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
+
+                storm::storage::BitVector clippedStatesOfCoalition(relevantStates.getNumberOfSetBits());
+                clippedStatesOfCoalition.setClippedStatesOfCoalition(relevantStates, statesOfCoalition);
+                std::vector<ValueType> constrainedChoiceValues = std::vector<ValueType>(b.size(), storm::utility::zero<ValueType>());
+
+                if (!relevantStates.empty()) {
+                    storm::storage::SparseMatrix<ValueType> submatrix = transitionMatrix.getSubmatrix(true, relevantStates, relevantStates, false);
+                    storm::modelchecker::helper::internal::SoundGameViHelper<ValueType> viHelper(submatrix, submatrix.transpose(), b, clippedStatesOfCoalition,
+                                                                                                 clippedPsiStates, goal.direction());
+
+                    if (produceScheduler) {
+                        viHelper.setProduceScheduler(true);
+                    }
+
+                    viHelper.performValueIteration(env, xL, xU, goal.direction(), constrainedChoiceValues);
+
+                    viHelper.fillChoiceValuesVector(constrainedChoiceValues, relevantStates, transitionMatrix.getRowGroupIndices());
+                    storm::utility::vector::setVectorValues(result, relevantStates, xL);
+
+                    if (produceScheduler) {
+                        scheduler =
+                            std::make_unique<storm::storage::Scheduler<ValueType>>(expandScheduler(viHelper.extractScheduler(), psiStates, ~phiStates, true));
+                    }
+                }
+
+                return SMGSparseModelCheckingHelperReturnType<ValueType>(std::move(result), std::move(relevantStates), std::move(scheduler), std::move(constrainedChoiceValues));
+            }
+
+            template<typename ValueType>
+            storm::storage::Scheduler<ValueType> SparseSmgRpatlHelper<ValueType>::expandScheduler(storm::storage::Scheduler<ValueType> scheduler, storm::storage::BitVector psiStates, storm::storage::BitVector notPhiStates, bool sound) {
                 storm::storage::Scheduler<ValueType> completeScheduler(psiStates.size());
                 uint_fast64_t maybeStatesCounter = 0;
                 uint schedulerSize = psiStates.size();
@@ -68,6 +141,9 @@ namespace storm {
                     // psiStates already fulfill formulae so we can set an arbitrary action
                     if(psiStates.get(stateCounter)) {
                         completeScheduler.setChoice(0, stateCounter);
+                        if (sound) {
+                            maybeStatesCounter++;
+                        }
                     // ~phiStates do not fulfill formulae so we can set an arbitrary action
                     } else if(notPhiStates.get(stateCounter)) {
                         completeScheduler.setChoice(0, stateCounter);
@@ -86,7 +162,22 @@ namespace storm {
                 storm::storage::BitVector notPsiStates = ~psiStates;
                 statesOfCoalition.complement();
 
-                auto result = computeUntilProbabilities(env, std::move(goal), transitionMatrix, backwardTransitions, storm::storage::BitVector(transitionMatrix.getRowGroupCount(), true), notPsiStates, qualitative, statesOfCoalition, produceScheduler, hint);
+                if (env.solver().isForceSoundness()) {
+                    auto result = computeUntilProbabilitiesSound(env, std::move(goal), transitionMatrix, backwardTransitions,
+                                                                 storm::storage::BitVector(transitionMatrix.getRowGroupCount(), true), notPsiStates,
+                                                                 qualitative, statesOfCoalition, produceScheduler, hint);
+                    for (auto& element : result.values) {
+                        element = storm::utility::one<ValueType>() - element;
+                    }
+                    for (auto& element : result.choiceValues) {
+                        element = storm::utility::one<ValueType>() - element;
+                    }
+                    return result;
+                }
+
+                auto result = computeUntilProbabilities(env, std::move(goal), transitionMatrix, backwardTransitions,
+                                                             storm::storage::BitVector(transitionMatrix.getRowGroupCount(), true), notPsiStates,
+                                                             qualitative, statesOfCoalition, produceScheduler, hint);
                 for (auto& element : result.values) {
                     element = storm::utility::one<ValueType>() - element;
                 }

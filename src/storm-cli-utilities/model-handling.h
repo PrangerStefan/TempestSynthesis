@@ -49,6 +49,11 @@
 #include "storm/settings/modules/HintSettings.h"
 #include "storm/storage/Qvbs.h"
 
+#include "storm/shields/AbstractShield.h"
+#include "storm/shields/PreShield.h"
+#include "storm/shields/PostShield.h"
+#include "storm/shields/OptimalShield.h"
+
 #include "storm/utility/Stopwatch.h"
 
 namespace storm {
@@ -1043,6 +1048,27 @@ namespace storm {
                                                     STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Scheduler export not supported for this property.");
                                                 }
                                             }
+                                            if (ioSettings.isExportShieldSet()) {
+                                                if (result->isExplicitQuantitativeCheckResult()) {
+                                                    if (result-> template asExplicitQuantitativeCheckResult<ValueType>().hasShield()) {
+                                                        auto shield = result->template asExplicitQuantitativeCheckResult<ValueType>().getShield();
+                                                        if(shield->isPreShield()) {
+                                                            shield->asPreShield().construct();
+                                                        } else if(shield->isPostShield()) {
+                                                            shield->asPostShield().construct();
+                                                        } else if(shield->isOptimalShield()) {
+                                                            shield->asOptimalShield().construct();
+                                                        }
+
+                                                        STORM_PRINT_AND_LOG("Exporting shield ... ");
+
+                                                        STORM_LOG_WARN_COND(exportCount == 0, "Prepending " << exportCount << " to file name for this property because there are multiple properties.");
+                                                        storm::api::exportShield(sparseModel, shield, (exportCount == 0 ? std::string("") : std::to_string(exportCount)) + ioSettings.getExportShieldFilename());
+                                                    }
+                                                }
+                                            }
+
+
                                             if (ioSettings.isExportCheckResultSet()) {
                                                 STORM_LOG_WARN_COND(sparseModel->hasStateValuations(), "No information of state valuations available. The result output will use internal state ids. You might be interested in building the model with state valuations using --buildstateval.");
                                                 STORM_LOG_WARN_COND(exportCount == 0, "Prepending " << exportCount << " to file name for this property because there are multiple properties.");

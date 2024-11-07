@@ -676,40 +676,15 @@ namespace storm {
                                 extractSchedulerChoices(*scheduler, resultForMaybeStates.getScheduler(), qualitativeStateSets.maybeStates);
                             }
                         }
-                        if (goal.isShieldingTask()) {
-                            std::vector<ValueType> subResult;
-                            uint sizeChoiceValues = 0;
-                            for(uint counter = 0; counter < qualitativeStateSets.maybeStates.size(); counter++) {
-                                if(qualitativeStateSets.maybeStates.get(counter)) {
-                                    subResult.push_back(result.at(counter));
-                                }
-                            }
-
-                            submatrix = transitionMatrix.getSubmatrix(true, qualitativeStateSets.maybeStates, qualitativeStateSets.maybeStates, false);
-                            auto sub_multiplier = storm::solver::MultiplierFactory<ValueType>().create(env, submatrix);
-                            sub_multiplier->multiply(env, subResult, &b, maybeStateChoiceValues);
-
-                        }
                     }
                 }
 
-                std::vector<ValueType> choiceValues = std::vector<ValueType>(transitionMatrix.getRowGroupIndices().at(transitionMatrix.getRowGroupIndices().size() - 1), storm::utility::zero<ValueType>());
-                auto choice_it = maybeStateChoiceValues.begin();
-                for(uint state = 0; state < transitionMatrix.getRowGroupIndices().size() - 1; state++) {
-                    uint rowGroupSize = transitionMatrix.getRowGroupIndices().at(state + 1) - transitionMatrix.getRowGroupIndices().at(state);
-                    if (qualitativeStateSets.maybeStates.get(state)) {
-                        for(uint choice = 0; choice < rowGroupSize; choice++, choice_it++) {
-                            choiceValues.at(transitionMatrix.getRowGroupIndices().at(state) + choice) = *choice_it;
-                        }
-                    } else if (qualitativeStateSets.statesWithProbability0.get(state)) {
-                        for(uint choice = 0; choice < rowGroupSize; choice++) {
-                            choiceValues.at(transitionMatrix.getRowGroupIndices().at(state) + choice) = 0;
-                        }
-                    } else if (qualitativeStateSets.statesWithProbability1.get(state)) {
-                        for(uint choice = 0; choice < rowGroupSize; choice++) {
-                            choiceValues.at(transitionMatrix.getRowGroupIndices().at(state) + choice) = 1;
-                        }
-                    }
+                std::vector<ValueType> choiceValues;
+                if(goal.isShieldingTask()) {
+                    choiceValues = std::vector<ValueType>(transitionMatrix.getRowGroupIndices().at(transitionMatrix.getRowGroupIndices().size() - 1), storm::utility::zero<ValueType>());
+                    std::vector<ValueType> b = std::vector<ValueType>(transitionMatrix.getRowCount(), storm::utility::zero<ValueType>());
+                    auto multiplier = storm::solver::MultiplierFactory<ValueType>().create(env, transitionMatrix);
+                    multiplier->multiply(env, result, &b, choiceValues);
                 }
 
                 // Extend scheduler with choices for the states in the qualitative state sets.

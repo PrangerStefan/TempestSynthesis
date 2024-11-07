@@ -6,9 +6,8 @@
 TEST(GameShieldingParserTest, PreSafetyShieldTest) {
     storm::parser::FormulaParser formulaParser;
 
-    std::string filename = "preSafetyShieldFileName";
     std::string value = "0.9";
-    std::string input = "<" + filename + ", PreSafety, lambda=" + value + "> <<p1,p2>> Pmax=? [F \"label\"]";
+    std::string input = "<PreSafety, lambda=" + value + "> <<p1,p2>> Pmax=? [F \"label\"]";
 
     std::shared_ptr<storm::logic::Formula const> formula(nullptr);
     ASSERT_NO_THROW(formula = formulaParser.parseSingleFormulaFromString(input));
@@ -25,15 +24,13 @@ TEST(GameShieldingParserTest, PreSafetyShieldTest) {
     EXPECT_FALSE(shieldExpression->isOptimalShield());
     EXPECT_TRUE(shieldExpression->isRelative());
     EXPECT_EQ(std::stod(value), shieldExpression->getValue());
-    EXPECT_EQ(filename, shieldExpression->getFilename());
 }
 
 TEST(GameShieldingParserTest, PostShieldTest) {
     storm::parser::FormulaParser formulaParser;
 
-    std::string filename = "postSafetyShieldFileName";
     std::string value = "0.7569";
-    std::string input = "<" + filename + ", PostSafety, gamma=" + value + "> <<p1,p2,p3>> Pmin=? [X !\"label\"]";
+    std::string input = "<PostSafety, gamma=" + value + "> <<p1,p2,p3>> Pmin=? [X !\"label\"]";
 
     std::shared_ptr<storm::logic::Formula const> formula(nullptr);
     ASSERT_NO_THROW(formula = formulaParser.parseSingleFormulaFromString(input));
@@ -50,7 +47,6 @@ TEST(GameShieldingParserTest, PostShieldTest) {
     EXPECT_FALSE(shieldExpression->isOptimalShield());
     EXPECT_FALSE(shieldExpression->isRelative());
     EXPECT_EQ(std::stod(value), shieldExpression->getValue());
-    EXPECT_EQ(filename, shieldExpression->getFilename());
 }
 
 TEST(GameShieldingParserTest, OptimalShieldTest) {
@@ -60,8 +56,7 @@ TEST(GameShieldingParserTest, OptimalShieldTest) {
 
     storm::parser::FormulaParser formulaParser(manager);
 
-    std::string filename = "optimalShieldFileName";
-    std::string input = "<" + filename + ", Optimal> <<p1,p2,p3>> Pmax=? [G x>y]";
+    std::string input = "<Optimal> <<p1,p2,p3>> Pmax=? [G x>y]";
 
     std::shared_ptr<storm::logic::Formula const> formula(nullptr);
     ASSERT_NO_THROW(formula = formulaParser.parseSingleFormulaFromString(input));
@@ -76,5 +71,4 @@ TEST(GameShieldingParserTest, OptimalShieldTest) {
     EXPECT_FALSE(shieldExpression->isPreSafetyShield());
     EXPECT_FALSE(shieldExpression->isPostSafetyShield());
     EXPECT_TRUE(shieldExpression->isOptimalShield());
-    EXPECT_EQ(filename, shieldExpression->getFilename());
 }

@@ -458,7 +458,7 @@ namespace storm {
 
         template<storm::dd::DdType DdType, typename ValueType>
         typename std::enable_if<std::is_same<ValueType, storm::RationalFunction>::value, std::unique_ptr<storm::modelchecker::CheckResult>>::type verifyWithDdEngine(storm::Environment const&, std::shared_ptr<storm::models::symbolic::Mdp<DdType, ValueType>> const&, storm::modelchecker::CheckTask<storm::logic::Formula, ValueType> const&) {
-            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Dd engine cannot verify MDPs with this data type.");
+            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "");
         }
 
         template<storm::dd::DdType DdType, typename ValueType>

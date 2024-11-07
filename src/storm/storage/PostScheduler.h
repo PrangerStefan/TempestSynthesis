@@ -38,6 +38,15 @@ namespace storm {
             void setChoice(PostSchedulerChoice<ValueType> const& newChoice, uint_fast64_t modelState, uint_fast64_t memoryState = 0);
 
             /*!
+             * Gets the choice defined by the scheduler for the given model and memory state.
+             *
+             * @param state The state for which to get the choice.
+             * @param memoryState the memory state which we consider.
+             */
+            PostSchedulerChoice<ValueType> const& getChoice(uint_fast64_t modelState, uint_fast64_t memoryState = 0) const;
+
+
+            /*!
              * Is the scheduler defined on the states indicated by the selected-states bitvector?
              */
             bool isChoiceSelected(BitVector const& selectedStates, uint64_t memoryState = 0) const;
@@ -83,6 +92,14 @@ namespace storm {
              *                          Requires a model to be given.
              */
             void printToStream(std::ostream& out, std::shared_ptr<storm::logic::ShieldExpression const> shieldingExpression, std::shared_ptr<storm::models::sparse::Model<ValueType>> model = nullptr, bool skipUniqueChoices = false) const;
+
+             /*!
+             * Prints the pre scheduler in json format to the given output stream.
+             */
+            void printJsonToStream(std::ostream& out, std::shared_ptr<storm::models::sparse::Model<ValueType>> model = nullptr, bool skipUniqueChoices = false) const;
+
+
+
         private:
             boost::optional<storm::storage::MemoryStructure> memoryStructure;
             std::vector<std::vector<PostSchedulerChoice<ValueType>>> schedulerChoiceMapping;
@@ -97,3 +114,4 @@ namespace storm {
         };
     }
 }
+    

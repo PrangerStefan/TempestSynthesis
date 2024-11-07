@@ -6,9 +6,8 @@
 TEST(MdpShieldingParserTest, PreSafetyShieldTest) {
     storm::parser::FormulaParser formulaParser;
 
-    std::string filename = "preSafetyShieldFileName";
     std::string value = "0.6667";
-    std::string input = "<" + filename + ", PreSafety, gamma=" + value + "> Pmax=? [F \"label\"]";
+    std::string input = "<PreSafety, gamma=" + value + "> Pmax=? [F \"label\"]";
 
     std::shared_ptr<storm::logic::Formula const> formula(nullptr);
     std::vector<storm::jani::Property> property;
@@ -22,7 +21,6 @@ TEST(MdpShieldingParserTest, PreSafetyShieldTest) {
     EXPECT_FALSE(shieldExpression->isOptimalShield());
     EXPECT_FALSE(shieldExpression->isRelative());
     EXPECT_EQ(std::stod(value), shieldExpression->getValue());
-    EXPECT_EQ(filename, shieldExpression->getFilename());
 }
 
 TEST(MdpShieldingParserTest, PostShieldTest) {
@@ -30,7 +28,7 @@ TEST(MdpShieldingParserTest, PostShieldTest) {
 
     std::string filename = "postSafetyShieldFileName";
     std::string value = "0.95";
-    std::string input = "<" + filename + ", PostSafety, lambda=" + value + "> Pmin=? [X !\"label\"]";
+    std::string input = "<PostSafety, lambda=" + value + "> Pmin=? [X !\"label\"]";
 
     std::shared_ptr<storm::logic::Formula const> formula(nullptr);
     std::vector<storm::jani::Property> property;
@@ -44,7 +42,6 @@ TEST(MdpShieldingParserTest, PostShieldTest) {
     EXPECT_FALSE(shieldExpression->isOptimalShield());
     EXPECT_TRUE(shieldExpression->isRelative());
     EXPECT_EQ(std::stod(value), shieldExpression->getValue());
-    EXPECT_EQ(filename, shieldExpression->getFilename());
 }
 
 TEST(MdpShieldingParserTest, OptimalShieldTest) {
@@ -55,7 +52,7 @@ TEST(MdpShieldingParserTest, OptimalShieldTest) {
     storm::parser::FormulaParser formulaParser(manager);
 
     std::string filename = "optimalShieldFileName";
-    std::string input = "<" + filename + ", Optimal> Pmax=? [G (a|x>3)]";
+    std::string input = "<Optimal> Pmax=? [G (a|x>3)]";
 
     std::shared_ptr<storm::logic::Formula const> formula(nullptr);
     std::vector<storm::jani::Property> property;
@@ -67,5 +64,4 @@ TEST(MdpShieldingParserTest, OptimalShieldTest) {
     EXPECT_FALSE(shieldExpression->isPreSafetyShield());
     EXPECT_FALSE(shieldExpression->isPostSafetyShield());
     EXPECT_TRUE(shieldExpression->isOptimalShield());
-    EXPECT_EQ(filename, shieldExpression->getFilename());
 }

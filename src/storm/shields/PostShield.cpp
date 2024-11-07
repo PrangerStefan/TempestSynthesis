@@ -45,7 +45,7 @@ namespace tempest {
                     }
                     ValueType optProbability = *(choice_it + optProbabilityIndex);
                     if(!relative && !choiceFilter(optProbability, optProbability, this->shieldingExpression->getValue())) {
-                        STORM_LOG_WARN("No shielding action possible with absolute comparison for state with index " << state);
+                        //STORM_LOG_WARN("No shielding action possible with absolute comparison for state with index " << state);
                         shield.setChoice(storm::storage::PostSchedulerChoice<ValueType>(), state, 0);
                         choice_it += rowGroupSize;
                         continue;
@@ -67,10 +67,40 @@ namespace tempest {
             return shield;
         }
 
+
+        template<typename ValueType, typename IndexType>
+        std::shared_ptr<storm::storage::PostScheduler<ValueType>> PostShield<ValueType, IndexType>::getScheduler() const {
+            return postScheduler;
+        }
+
+        template<typename ValueType, typename IndexType>
+        bool PostShield<ValueType, IndexType>::isPostShield() const {
+            return true;
+        }
+
+        template<typename ValueType, typename IndexType>
+        void PostShield<ValueType, IndexType>::printJsonToStream(std::ostream& out, std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model) {
+            postScheduler->printJsonToStream(out, model);
+        }
+
+        template<typename ValueType, typename IndexType>
+        void PostShield<ValueType, IndexType>::printToStream(std::ostream& out, std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model) {
+            postScheduler->printToStream(out, this->shieldingExpression, model);
+        }
+
+        //template<typename ValueType, typename IndexType>
+        //template<typename VT>
+        //std::enable_if_t<std::is_same<VT, storm::RationalFunction>::value, storm::storage::PostScheduler<VT>> PostShield<ValueType, IndexType>::construct() {
+        //    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "todo");
+        //}
+
+
         // Explicitly instantiate appropriate classes
         template class PostShield<double, typename storm::storage::SparseMatrix<double>::index_type>;
 #ifdef STORM_HAVE_CARL
         template class PostShield<storm::RationalNumber, typename storm::storage::SparseMatrix<storm::RationalNumber>::index_type>;
+        template class PostShield<storm::RationalFunction, typename storm::storage::SparseMatrix<storm::RationalFunction>::index_type>;
+
 #endif
     }
 }

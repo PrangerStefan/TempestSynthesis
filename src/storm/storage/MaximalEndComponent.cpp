@@ -4,7 +4,6 @@
 
 namespace storm {
     namespace storage {
-
         std::ostream& operator<<(std::ostream& out, storm::storage::FlatSet<uint_fast64_t> const& block);
 
         MaximalEndComponent::MaximalEndComponent() : stateToChoicesMapping() {
@@ -100,6 +99,18 @@ namespace storm {
             return stateChoicePair->second.find(choice) != stateChoicePair->second.end();
         }
 
+        template<typename ValueType>
+        bool MaximalEndComponent::isErgodic(storm::storage::SparseMatrix<ValueType> transitionMatrix) const {
+            auto rowGroupIndices = transitionMatrix.getRowGroupIndices();
+            for (auto state : this->getStateSet())
+            {
+                if (getChoicesForState(state).size() == (rowGroupIndices[state + 1] - rowGroupIndices[state])) continue;
+                return false;
+            }
+            return true;
+        }
+
+
         MaximalEndComponent::set_type MaximalEndComponent::getStateSet() const {
             set_type states;
             states.reserve(stateToChoicesMapping.size());
@@ -136,5 +147,8 @@ namespace storm {
         MaximalEndComponent::const_iterator MaximalEndComponent::end() const {
             return stateToChoicesMapping.end();
         }
+
+        template bool MaximalEndComponent::isErgodic<double>(storm::storage::SparseMatrix<double> transitionMatrix) const;
+        template bool MaximalEndComponent::isErgodic<storm::RationalNumber>(storm::storage::SparseMatrix<storm::RationalNumber> transitionMatrix) const;
     }
 }

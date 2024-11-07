@@ -11,6 +11,7 @@
 #include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
 #include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
 #include "storm/exceptions/NotSupportedException.h"
+#include "storm/shields/AbstractShield.h"
 
 namespace storm {
     
@@ -59,6 +60,19 @@ namespace storm {
                 scheduler.printJsonToStream(stream, model, false, true);
             } else {
                 scheduler.printToStream(stream, model, false, true);
+            }
+            storm::utility::closeFile(stream);
+        }
+
+        template <typename ValueType, typename IndexType>
+        void exportShield(std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, std::shared_ptr<tempest::shields::AbstractShield<ValueType, IndexType>> const& shield, std::string const& filename) {
+            std::ofstream stream;
+            storm::utility::openFile(filename, stream);
+            std::string jsonFileExtension = ".json";
+            if (filename.size() > 4 && std::equal(jsonFileExtension.rbegin(), jsonFileExtension.rend(), filename.rbegin())) {
+                shield->printJsonToStream(stream, model);
+            } else {
+                shield->printToStream(stream, model);
             }
             storm::utility::closeFile(stream);
         }
